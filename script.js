@@ -147,8 +147,15 @@ messageSentFromSite(message, uid) {
 
 // Инициализация FirebaseManager
 const firebaseManager = new FirebaseManager();
+
+// Проверяем, зарегистрирован ли пользователь анонимно при загрузке страницы
+window.addEventListener('load', async () => {
+    if (!firebaseManager.isUserRegistered()) {
+        await firebaseManager.registerAnonymousUser();
+    }
+});
+
 // Обработчик отправки формы сообщения на сайте
-// Обработчик отправки сообщения через форму на странице
 document.getElementById('messageForm').addEventListener('submit', async (event) => {
     event.preventDefault();
     const messageInput = document.getElementById('messageInput').value.trim();
@@ -166,9 +173,47 @@ document.getElementById('messageForm').addEventListener('submit', async (event) 
     }
 });
 
+// Функция для прокручивания контейнера сообщений вниз
+function scrollToBottom() {
+    const messagesContainer = document.getElementById('messagesContainer');
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
 
+// Наблюдатель за изменениями в контейнере сообщений
+const messagesObserver = new MutationObserver((mutationsList, observer) => {
+    mutationsList.forEach((mutation) => {
+        if (mutation.type === 'childList') {
+            scrollToBottom(); // Прокручиваем вниз при добавлении нового элемента
+        }
+    });
+});
 
+// Начинаем наблюдение за контейнером сообщений
+const messagesContainer = document.getElementById('messagesContainer');
+messagesObserver.observe(messagesContainer, { childList: true });
 
+// Обработчик открытия и закрытия чата
+const openChatButton = document.getElementById('openChatButton');
+const closeChatButton = document.getElementById('closeChatButton');
+const chatContainer = document.querySelector('.chat-container');
+
+openChatButton.addEventListener('click', () => {
+    chatContainer.style.display = 'block';
+});
+
+closeChatButton.addEventListener('click', () => {
+    chatContainer.style.display = 'none';
+});
+
+// Функция для отправки сообщения через FirebaseManager
+async function sendMessageThroughFirebase(message) {
+    await firebaseManager.sendMessage(message);
+}
+
+// Функция для отправки сообщения через Telegram
+async function sendTelegramMessage(message) {
+    await firebaseManager.sendTelegramMessage(message);
+}
 async function startPolling() {
     try {
         let offset = 0;
@@ -224,41 +269,3 @@ async function startPolling() {
 
 // Запускаем Long Polling при загрузке страницы
 startPolling();
-
-
-// Получаем ссылку на кнопку открытия чата
-const openChatButton = document.getElementById('openChatButton');
-
-// Получаем ссылку на кнопку закрытия чата
-const closeChatButton = document.getElementById('closeChatButton');
-
-// Получаем ссылку на контейнер чата
-const chatContainer = document.querySelector('.chat-container');
-
-// Добавляем обработчик события при клике на кнопку открытия чата
-openChatButton.addEventListener('click', () => {
-    chatContainer.style.display = 'block';
-});
-
-// Добавляем обработчик события при клике на кнопку закрытия чата
-closeChatButton.addEventListener('click', () => {
-    chatContainer.style.display = 'none';
-});
-// Функция для прокручивания контейнера сообщений вниз
-function scrollToBottom() {
-    const messagesContainer = document.getElementById('messagesContainer');
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-}
-
-// Наблюдатель за изменениями в контейнере сообщений
-const messagesObserver = new MutationObserver((mutationsList, observer) => {
-    mutationsList.forEach((mutation) => {
-        if (mutation.type === 'childList') {
-            scrollToBottom(); // Прокручиваем вниз при добавлении нового элемента
-        }
-    });
-});
-
-// Начинаем наблюдение за контейнером сообщений
-const messagesContainer = document.getElementById('messagesContainer');
-messagesObserver.observe(messagesContainer, { childList: true });
