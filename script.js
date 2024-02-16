@@ -172,6 +172,25 @@ document.getElementById('messageForm').addEventListener('submit', async (event) 
         await firebaseManager.sendMessage(messageInput);
     }
 });
+// Обработчик отправки сообщения при нажатии клавиши Enter
+document.getElementById('messageInput').addEventListener('keypress', async (event) => {
+    if (event.key === 'Enter') {
+        event.preventDefault(); // Предотвращаем стандартное поведение формы (отправку по Enter)
+        const messageInput = document.getElementById('messageInput').value.trim();
+        if (messageInput !== '') {
+            const newMessageElement = document.createElement('div');
+            newMessageElement.textContent = `Вы отправили: ${messageInput}`;
+            newMessageElement.classList.add('message', 'sent-message'); // Добавляем классы сообщению
+            const messagesContainer = document.getElementById('messagesContainer');
+            messagesContainer.appendChild(newMessageElement);
+
+            document.getElementById('messageInput').value = '';
+
+            // Отправляем сообщение через FirebaseManager
+            await firebaseManager.sendMessage(messageInput);
+        }
+    }
+});
 
 // Функция для прокручивания контейнера сообщений вниз
 function scrollToBottom() {
