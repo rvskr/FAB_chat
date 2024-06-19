@@ -1,13 +1,12 @@
 {
-    "name": "fab",
+    "name": "your-project-name",
     "version": "1.0.0",
     "main": "server.js",
     "scripts": {
-      "start": "node server.js"
+        "start": "node server.js"
     },
     "dependencies": {
-      "firebase": "^9.6.0",
-      "node-fetch": "^2.6.1"
+        "firebase": "^9.23.0",
+        "node-fetch": "^2.6.1"
     }
-  }
-  
+}
