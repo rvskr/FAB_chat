@@ -1,26 +1,5 @@
 services:
-  - type: web
-    name: your-service-name
+  - name: anonymous-chat
     env: node
-    plan: free
     buildCommand: npm install
     startCommand: npm start
-    envVars:
-      - key: TELEGRAM_BOT_TOKEN
-        value: "6923582894:AAHuYGsJuKLsKCcVccnN8kbsdRzC8vTiFVE"
-      - key: CHAT_ID
-        value: "558625598"
-      - key: FIREBASE_API_KEY
-        value: "AIzaSyC04K2xwoat05QTXxJeb9f-hYXcjUBae0A"
-      - key: FIREBASE_AUTH_DOMAIN
-        value: "simple-blog-ayojxo.firebaseapp.com"
-      - key: FIREBASE_PROJECT_ID
-        value: "simple-blog-ayojxo"
-      - key: FIREBASE_STORAGE_BUCKET
-        value: "simple-blog-ayojxo.appspot.com"
-      - key: FIREBASE_MESSAGING_SENDER_ID
-        value: "504207144426"
-      - key: FIREBASE_APP_ID
-        value: "1:504207144426:web:e9be92cff23c73b5056e93"
-      - key: FIREBASE_DATABASE_URL
-        value: "https://simple-blog-ayojxo-default-rtdb.europe-west1.firebasedatabase.app"

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Анонимный Чат</title>
+</head>
+<body>
+    <h1>Анонимный Чат</h1>
+    <textarea id="message" placeholder="Введите ваше сообщение"></textarea>
+    <button onclick="sendMessage()">Отправить</button>
+
+    <script>
+        async function sendMessage() {
+            const message = document.getElementById('message').value;
+            const response = await fetch('/send-message', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ message })
+            });
+
+            if (response.ok) {
+                alert('Сообщение отправлено');
+                document.getElementById('message').value = '';
+            } else {
+                alert('Ошибка отправки сообщения');
+            }
+        }
+    </script>
+</body>
+</html>
