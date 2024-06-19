@@ -79,6 +79,7 @@ class FirebaseManager {
             console.error('Ошибка отправки сообщения:', error);
         }
     }
+
     async sendTelegramMessage(message) {
         try {
             const response = await fetch(`https://api.telegram.org/bot${telegramBotToken}/sendMessage`, {
@@ -102,60 +103,35 @@ class FirebaseManager {
             console.error('Ошибка отправки сообщения в Telegram:', error);
         }
     }
-    
-// Метод для обновления сообщений на странице
-// Метод для обновления сообщений на странице
-updateMessagesOnPage(message, uid, isSentMessage) {
-    console.log('Обновляем сообщения на странице');
-    // Проверяем, есть ли UID у пользователя
-    if (uid) {
-        const messagesContainer = document.getElementById('messagesContainer');
-        const currentTime = new Date().toLocaleTimeString();
-        const userDisplayName = `Менеджер`;
-        const formattedMessage = `${currentTime}, ${userDisplayName}: ${message}`;
-        const newMessageElement = document.createElement('div');
-        newMessageElement.textContent = formattedMessage;
 
-        // Добавляем класс "sent-message" для отправленных сообщений
-        if (isSentMessage) {
-            console.log('Добавляем класс sent-message');
-            newMessageElement.classList.add('sent-message');
-        } else {
-            // Добавляем класс "received-message" для полученных сообщений
-            console.log('Добавляем класс received-message');
-            newMessageElement.classList.add('received-message');
-        }
-
-        messagesContainer.appendChild(newMessageElement);
-    }
-}
-
-
-
-// Метод для проверки, было ли сообщение отправлено пользователем с сайта
-messageSentFromSite(message, uid) {
-    const messages = document.getElementById('messagesContainer').getElementsByTagName('div');
-    for (let i = 0; i < messages.length; i++) {
-        if (messages[i].textContent.includes(message) && messages[i].textContent.includes(uid)) {
-            return true;
+    async getOffset(uid) {
+        try {
+            const offsetSnapshot = await this.database.ref(`users/${uid}/offset`).once('value');
+            return offsetSnapshot.val() || 0; // Возвращаем значение offset или 0, если его нет
+        } catch (error) {
+            console.error('Ошибка получения сдвига для пользователя с UID', uid, ':', error);
+            return 0; // Возвращаем 0 в случае ошибки
         }
     }
-    return false;
+
+    async setOffset(uid, offset) {
+        try {
+            await this.database.ref(`users/${uid}`).update({ offset });
+            console.log('Сдвиг для пользователя с UID', uid, 'успешно обновлен:', offset);
+        } catch (error) {
+            console.error('Ошибка обновления сдвига для пользователя с UID', uid, ':', error);
+        }
+    }
 }
 
-}
-
-// Инициализация FirebaseManager
 const firebaseManager = new FirebaseManager();
 
-// Проверяем, зарегистрирован ли пользователь анонимно при загрузке страницы
 window.addEventListener('load', async () => {
     if (!firebaseManager.isUserRegistered()) {
         await firebaseManager.registerAnonymousUser();
     }
 });
 
-// Обработчик отправки формы сообщения на сайте
 document.getElementById('messageForm').addEventListener('submit', async (event) => {
     event.preventDefault();
     const messageInput = document.getElementById('messageInput').value.trim();
@@ -172,7 +148,7 @@ document.getElementById('messageForm').addEventListener('submit', async (event) 
         await firebaseManager.sendMessage(messageInput);
     }
 });
-// Обработчик отправки сообщения при нажатии клавиши Enter
+
 document.getElementById('messageInput').addEventListener('keypress', async (event) => {
     if (event.key === 'Enter') {
         event.preventDefault(); // Предотвращаем стандартное поведение формы (отправку по Enter)
@@ -192,13 +168,11 @@ document.getElementById('messageInput').addEventListener('keypress', async (even
     }
 });
 
-// Функция для прокручивания контейнера сообщений вниз
 function scrollToBottom() {
     const messagesContainer = document.getElementById('messagesContainer');
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
-// Наблюдатель за изменениями в контейнере сообщений
 const messagesObserver = new MutationObserver((mutationsList, observer) => {
     mutationsList.forEach((mutation) => {
         if (mutation.type === 'childList') {
@@ -207,11 +181,9 @@ const messagesObserver = new MutationObserver((mutationsList, observer) => {
     });
 });
 
-// Начинаем наблюдение за контейнером сообщений
 const messagesContainer = document.getElementById('messagesContainer');
 messagesObserver.observe(messagesContainer, { childList: true });
 
-// Обработчик открытия и закрытия чата
 const openChatButton = document.getElementById('openChatButton');
 const closeChatButton = document.getElementById('closeChatButton');
 const chatContainer = document.querySelector('.chat-container');
@@ -224,67 +196,77 @@ closeChatButton.addEventListener('click', () => {
     chatContainer.style.display = 'none';
 });
 
-// Функция для отправки сообщения через FirebaseManager
-async function sendMessageThroughFirebase(message) {
-    await firebaseManager.sendMessage(message);
-}
+class TelegramBot {
+    constructor(token, uid) {
+        this.token = token;
+        this.uid = uid;
+        this.offset = 0;
+        this.isPolling = false; // Флаг, указывающий, выполняется ли процесс получения обновлений
+    }
 
-// Функция для отправки сообщения через Telegram
-async function sendTelegramMessage(message) {
-    await firebaseManager.sendTelegramMessage(message);
-}
-async function startPolling() {
-    try {
-        let offset = 0;
-        while (true) {
-            const response = await fetch(`https://api.telegram.org/bot${telegramBotToken}/getUpdates?offset=${offset}&timeout=30`, {
+    async startPolling() {
+        // Проверяем, выполняется ли уже процесс получения обновлений
+        if (this.isPolling) {
+            console.log('Процесс получения обновлений уже запущен.');
+            return;
+        }
+
+        // Устанавливаем флаг, что процесс получения обновлений начался
+        this.isPolling = true;
+
+        try {
+            // Начинаем получение обновлений
+            await this.fetchUpdates();
+        } catch (error) {
+            console.error('Ошибка при запуске Long Polling для пользователя с UID', this.uid, ':', error);
+        } finally {
+            // Сбрасываем флаг после завершения процесса получения обновлений
+            this.isPolling = false;
+        }
+    }
+    async fetchUpdates() {
+        try {
+            const response = await fetch(`https://api.telegram.org/bot${this.token}/getUpdates?offset=${this.offset}&timeout=30`, {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json'
                 }
             });
-
-            const responseData = await response.json();
+    
+            if (response.status === 409) {
+                console.log('Конфликт при получении обновлений. Попробуйте снова позже.');
+                return;
+            }
+    
+            const responseData = await response.json(); // Прочитать ответ только один раз
             if (responseData.ok) {
                 const updates = responseData.result;
                 if (updates.length > 0) {
                     updates.forEach(update => {
-                        const message = update.message;
-                        if (message) {
-                            const text = message.text;
-                            const chatId = message.chat.id;
-                            const messageId = message.message_id;
-                            const repliedMessage = message.reply_to_message;
-                            let repliedMessageUID = null;
-                            if (repliedMessage) {
-                                repliedMessageUID = repliedMessage.from.id;
-                            }
-
-                            // Отправляем сообщение только если оно не из Телеграма
-                            if (repliedMessageUID !== null) {
-                                // Отправляем ответ на цитируемое сообщение
-                                firebaseManager.sendMessage(text, chatId === repliedMessage.chat.id ? repliedMessageUID : message.from.id)
-                                    .then(() => {
-                                        firebaseManager.updateMessagesOnPage(text, repliedMessageUID);
-                                    })
-                                    .catch(error => {
-                                        console.error('Ошибка отправки сообщения:', error);
-                                    });
-                            } else {
-                                // Если сообщение из Телеграма, просто обновляем его на странице
-                                firebaseManager.updateMessagesOnPage(text, null, false);
-                            }
-                        }
-                        offset = update.update_id + 1;
+                        // Обработка обновлений
                     });
+    
+                    // Обновляем оффсет
+                    this.offset = updates[updates.length - 1].update_id + 1;
                 }
             }
-            await new Promise(resolve => setTimeout(resolve, 500)); // Добавляем небольшую задержку между запросами, чтобы не перегрузить сервер
+        } catch (error) {
+            console.error('Ошибка при выполнении Long Polling для пользователя с UID', this.uid, ':', error);
+        } finally {
+            // Повторно запускаем получение обновлений
+            if (this.isPolling) {
+                setTimeout(() => this.fetchUpdates(), 500); // Повторный запрос с небольшой задержкой
+            }
         }
-    } catch (error) {
-        console.error('Ошибка при выполнении Long Polling:', error);
     }
+    
+    async updateOffset() {
+        // Реализуйте обновление сдвига (offset) в базе данных Firebase или другом механизме управления сдвигом
+    }
+
+    // Добавьте методы для обновления сообщений на странице, если это необходимо
 }
 
-// Запускаем Long Polling при загрузке страницы
-startPolling();
+// Создаем экземпляр класса TelegramBot и запускаем процесс получения обновлений
+const telegramBot = new TelegramBot(telegramBotToken, chatId);
+telegramBot.startPolling();
