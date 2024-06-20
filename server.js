@@ -5,7 +5,6 @@ const TelegramBot = require('node-telegram-bot-api');
 const http = require('http');
 const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
-const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 
 const app = express();
@@ -22,6 +21,11 @@ const bot = new TelegramBot(botToken, { polling: true });
 
 let userMessages = new Map();
 
+// Функция для генерации короткого UID
+function generateShortUid() {
+    return Math.random().toString(36).substr(2, 5); // генерируем строку из 5 символов
+}
+
 function sendTelegramMessage(chatId, messageText, uid, isFromBot) {
     console.log(`Sending message to chatId ${chatId}, uid: ${uid}, isFromBot: ${isFromBot}`);
     setTimeout(() => {
@@ -36,7 +40,7 @@ function sendTelegramMessage(chatId, messageText, uid, isFromBot) {
 bot.on('message', (msg) => {
     const chatId = msg.chat.id;
     const messageText = msg.text;
-    const uid = uuidv4();
+    const uid = generateShortUid();
 
     console.log(`Received message from Telegram: ${messageText}, chatId: ${chatId}`);
 
@@ -69,7 +73,7 @@ bot.on('text', (msg) => {
 
 app.post('/send-message', (req, res) => {
     const messageText = req.body.message;
-    const uid = req.cookies.uid || uuidv4();
+    const uid = req.cookies.uid || generateShortUid();
 
     if (!messageText) {
         return res.status(400).send('Сообщение не может быть пустым');
@@ -89,9 +93,7 @@ app.post('/send-message', (req, res) => {
 });
 
 app.get('/get-messages', (req, res) => {
-    const uid = req.cookies.uid || uuidv4();
-
-    console.log(`Fetching messages for uid: ${uid}`);
+    const uid = req.cookies.uid || generateShortUid();
 
     if (!userMessages.has(uid)) {
         userMessages.set(uid, []);
