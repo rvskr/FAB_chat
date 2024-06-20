@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telegram Chat</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        #messages { max-width: 600px; margin: 20px auto; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
+        .message { padding: 5px; border-bottom: 1px solid #ddd; }
+    </style>
+</head>
+<body>
+    <div id="messages"></div>
+
+    <script>
+        async function fetchMessages() {
+            const response = await fetch('/messages');
+            const messages = await response.json();
+            const messagesDiv = document.getElementById('messages');
+            messagesDiv.innerHTML = messages.map(msg => `<div class="message">${msg.text}</div>`).join('');
+        }
+
+        // Fetch messages every 5 seconds
+        setInterval(fetchMessages, 5000);
+        fetchMessages();
+    </script>
+</body>
+</html>
