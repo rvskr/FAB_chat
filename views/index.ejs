@@ -1,21 +1,34 @@
+<!-- index.ejs -->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Сообщения из телеграм-бота</title>
+    <title>Диалог с телеграм-ботом</title>
+    <style>
+        .bot-message {
+            color: green;
+        }
+        .user-message {
+            color: blue;
+        }
+    </style>
 </head>
 <body>
-    <h1>Сообщения из телеграм-бота</h1>
+    <h1>Диалог с телеграм-ботом</h1>
     <ul id="messages-list">
         <% messages.forEach(function(message) { %>
-            <li class="<%= message.fromBot ? 'bot-message' : 'user-message' %>">
-                [<%= message.uid %>] <%= message.text %>
-            </li>
+            <% if (message.fromBot) { %>
+                <li class="bot-message">Бот [<%= message.uid %>]: <%= message.text %></li>
+            <% } else { %>
+                <li class="user-message">Пользователь [<%= message.uid %>]: <%= message.text %></li>
+            <% } %>
         <% }); %>
     </ul>
 
     <form id="message-form">
+        <input type="hidden" id="uid-input" name="uid" value="<%= uid %>">
         <input type="text" id="message-input" name="message" placeholder="Введите сообщение">
         <button type="submit">Отправить</button>
     </form>
@@ -28,8 +41,11 @@
         function updateMessages(newMessages) {
             $('#messages-list').empty();
             newMessages.forEach(function(message) {
-                const messageClass = message.fromBot ? 'bot-message' : 'user-message';
-                $('#messages-list').append(`<li class="${messageClass}">[${message.uid}] ${message.text}</li>`);
+                if (message.fromBot) {
+                    $('#messages-list').append(`<li class="bot-message">Бот [${message.uid}]: ${message.text}</li>`);
+                } else {
+                    $('#messages-list').append(`<li class="user-message">Пользователь [${message.uid}]: ${message.text}</li>`);
+                }
             });
         }
 
@@ -41,15 +57,16 @@
             updateMessages(<%- JSON.stringify(messages) %>);
 
             setInterval(function() {
-                socket.emit('updateMessages', Object.values(messages));
+                socket.emit('updateMessages', messages);
             }, 5000);
         });
 
         $('#message-form').submit(function(event) {
             event.preventDefault();
+            const uid = $('#uid-input').val();
             const messageText = $('#message-input').val();
             socket.emit('sendMessage', messageText);
-            $.post('/send-message', { message: messageText }, function(response) {
+            $.post('/send-message', { uid: uid, message: messageText }, function(response) {
                 console.log(response);
             });
             $('#message-input').val('');
