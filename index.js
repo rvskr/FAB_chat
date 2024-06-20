@@ -4,7 +4,8 @@ const express = require('express');
 const TelegramBot = require('node-telegram-bot-api');
 const http = require('http');
 const socketIo = require('socket.io');
-const bodyParser = require('body-parser'); // Для обработки POST запросов
+const bodyParser = require('body-parser');
+const { v4: uuidv4 } = require('uuid'); // Для генерации уникальных идентификаторов
 
 const app = express();
 const server = http.createServer(app);
@@ -12,65 +13,48 @@ const io = socketIo(server);
 
 const port = process.env.PORT || 3000;
 
-// Указываем Express использовать EJS
 app.set('view engine', 'ejs');
 
-// Токен вашего телеграм-бота
 const botToken = process.env.BOT_TOKEN;
-
-// Создаем экземпляр бота
 const bot = new TelegramBot(botToken, { polling: true });
 
-// Массив для хранения сообщений
-let messages = [];
+let messages = {}; // Используем объект для хранения сообщений с uid
 
-// Обработка входящих сообщений от бота
 bot.on('message', (msg) => {
     const chatId = msg.chat.id;
     const messageText = msg.text;
+    const uid = uuidv4(); // Генерируем уникальный идентификатор
 
-    // Сохраняем сообщение в массиве
-    messages.push({ text: messageText, fromBot: true });
+    messages[uid] = { text: messageText, fromBot: true, uid }; // Добавляем сообщение с uid
 
-    // Отправляем обновленные данные на клиент через Socket.io
-    io.emit('updateMessages', messages);
+    io.emit('updateMessages', Object.values(messages)); // Отправляем обновленные данные на клиент через Socket.io
 
-    // Для примера, отправляем эхо-ответ обратно в чат
     bot.sendMessage(chatId, `Вы сказали: ${messageText}`);
 });
 
-// Обработка отправки сообщения от пользователя на сайте
 app.use(bodyParser.urlencoded({ extended: true }));
 app.post('/send-message', (req, res) => {
     const messageText = req.body.message;
+    const uid = uuidv4(); // Генерируем уникальный идентификатор
 
-    // Отправляем сообщение в Telegram бота
     bot.sendMessage(process.env.TELEGRAM_CHAT_ID, messageText);
 
-    // Добавляем сообщение в массив для отображения на сайте
-    messages.push({ text: messageText, fromBot: false });
+    messages[uid] = { text: messageText, fromBot: false, uid }; // Добавляем сообщение с uid
 
-    // Отправляем обновленные данные на клиент через Socket.io
-    io.emit('updateMessages', messages);
+    io.emit('updateMessages', Object.values(messages));
 
-    // Отправляем подтверждение клиенту
     res.send('Сообщение успешно отправлено в Telegram и на сайт!');
 });
 
-// Настройка маршрута для вашего сайта
 app.get('/', (req, res) => {
-    res.render('index', { messages: messages });
+    res.render('index', { messages: Object.values(messages) }); // Передаем массив значений сообщений на клиент
 });
 
-// Настройка сокета для обновления данных на клиенте
 io.on('connection', (socket) => {
     console.log('Пользователь подключился к сокету');
-    
-    // Отправляем начальные данные при подключении
-    socket.emit('updateMessages', messages);
+    socket.emit('updateMessages', Object.values(messages)); // Отправляем начальные данные при подключении
 });
 
-// Запуск сервера
 server.listen(port, () => {
     console.log(`Сервер запущен на порту ${port}`);
 });

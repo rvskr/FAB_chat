@@ -9,63 +9,49 @@
     <h1>Сообщения из телеграм-бота</h1>
     <ul id="messages-list">
         <% messages.forEach(function(message) { %>
-            <li class="<%= message.fromBot ? 'bot-message' : 'user-message' %>"><%= message.text %></li>
+            <li class="<%= message.fromBot ? 'bot-message' : 'user-message' %>">
+                [<%= message.uid %>] <%= message.text %>
+            </li>
         <% }); %>
     </ul>
 
-    <!-- Форма для ввода нового сообщения -->
     <form id="message-form">
         <input type="text" id="message-input" name="message" placeholder="Введите сообщение">
         <button type="submit">Отправить</button>
     </form>
 
-    <!-- jQuery (для AJAX запросов) -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        // Инициализация Socket.io
         const socket = io();
 
-        // Функция для обновления списка сообщений на клиенте
         function updateMessages(newMessages) {
-            $('#messages-list').empty(); // Очищаем список сообщений
+            $('#messages-list').empty();
             newMessages.forEach(function(message) {
                 const messageClass = message.fromBot ? 'bot-message' : 'user-message';
-                $('#messages-list').append(`<li class="${messageClass}">${message.text}</li>`);
+                $('#messages-list').append(`<li class="${messageClass}">[${message.uid}] ${message.text}</li>`);
             });
         }
 
-        // Прослушивание события обновления сообщений от сервера
         socket.on('updateMessages', function(messages) {
             updateMessages(messages);
         });
 
-        // Загрузка данных при загрузке страницы и затем каждые 5 секунд
         $(document).ready(function() {
-            updateMessages(<%- JSON.stringify(messages) %>); // Загружаем данные в начале
+            updateMessages(<%- JSON.stringify(messages) %>);
 
-            // Обновляем данные каждые 5 секунд
             setInterval(function() {
-                socket.emit('updateMessages', messages); // Запрашиваем обновление данных
-            }, 5000); // 5000 миллисекунд = 5 секунд
+                socket.emit('updateMessages', Object.values(messages));
+            }, 5000);
         });
 
-        // Обработчик отправки формы
         $('#message-form').submit(function(event) {
-            event.preventDefault(); // Предотвращаем перезагрузку страницы
-
-            // Получаем текст сообщения из поля ввода
+            event.preventDefault();
             const messageText = $('#message-input').val();
-
-            // Отправляем сообщение на сервер через Socket.io
             socket.emit('sendMessage', messageText);
-
-            // Отправляем сообщение также на сервер для отправки в Telegram
             $.post('/send-message', { message: messageText }, function(response) {
-                console.log(response); // Логируем ответ сервера в консоль
+                console.log(response);
             });
-
-            // Очищаем поле ввода после отправки
             $('#message-input').val('');
         });
     </script>
