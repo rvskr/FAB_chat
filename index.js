@@ -30,8 +30,12 @@ const bot = new TelegramBot(botToken, { polling: true });
 let messages = [];
 
 // Функция для отправки сообщения в Telegram с указанием UID
-function sendTelegramMessage(chatId, messageText, uid) {
-    bot.sendMessage(chatId, `Пользователь ${uid}: ${messageText}`);
+function sendTelegramMessage(chatId, messageText, uid, isFromBot) {
+    if (isFromBot) {
+        bot.sendMessage(chatId, messageText);
+    } else {
+        bot.sendMessage(chatId, `Пользователь ${uid}: ${messageText}`);
+    }
 }
 
 // Обработчик сообщений от Telegram бота
@@ -45,7 +49,7 @@ bot.on('message', (msg) => {
 
     io.emit('updateMessages', messages); // Отправляем обновленные данные на клиент через Socket.io
 
-    sendTelegramMessage(chatId, messageText, uid); // Отправляем сообщение в Telegram с UID
+    sendTelegramMessage(chatId, messageText, uid, true); // Отправляем сообщение в Telegram с UID
 });
 
 // Обработчик отправки сообщения с сайта в Telegram
@@ -54,7 +58,7 @@ app.post('/send-message', (req, res) => {
 
     const uid = req.cookies.uid || uuidv4(); // Если у пользователя нет UID, генерируем новый
 
-    bot.sendMessage(process.env.TELEGRAM_CHAT_ID, messageText);
+    bot.sendMessage(process.env.TELEGRAM_CHAT_ID, `Пользователь ${uid}: ${messageText}`);
 
     messages.push({ text: messageText, fromBot: false, uid });
 
