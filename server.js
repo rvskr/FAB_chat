@@ -6,6 +6,7 @@ const http = require('http');
 const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 const { v4: uuidv4 } = require('uuid');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
@@ -14,8 +15,7 @@ const port = process.env.PORT || 3000;
 
 app.use(cookieParser());
 app.use(bodyParser.urlencoded({ extended: true }));
-
-app.set('view engine', 'ejs');
+app.use(express.static(path.join(__dirname, 'public')));
 
 const botToken = process.env.BOT_TOKEN;
 const bot = new TelegramBot(botToken, { polling: true });
@@ -30,7 +30,7 @@ function sendTelegramMessage(chatId, messageText, uid, isFromBot) {
         } else {
             bot.sendMessage(chatId, `Пользователь ${uid}: ${messageText}`);
         }
-    }, 1000); // задержка 1 секунда перед отправкой
+    }, 1000);
 }
 
 bot.on('message', (msg) => {
@@ -46,7 +46,6 @@ bot.on('message', (msg) => {
     userMessages.get(uid).push({ text: messageText, fromBot: true, uid });
 });
 
-// Обработка цитирования сообщений от бота
 bot.on('text', (msg) => {
     const chatId = msg.chat.id;
     const messageText = msg.text;
@@ -92,6 +91,7 @@ app.post('/send-message', (req, res) => {
 app.get('/get-messages', (req, res) => {
     const uid = req.cookies.uid || uuidv4();
 
+    console.log(`Fetching messages for uid: ${uid}`);
 
     if (!userMessages.has(uid)) {
         userMessages.set(uid, []);
@@ -101,15 +101,7 @@ app.get('/get-messages', (req, res) => {
 });
 
 app.get('/', (req, res) => {
-    const uid = req.cookies.uid || uuidv4();
-
-    console.log(`Rendering index page for uid: ${uid}`);
-
-    if (!userMessages.has(uid)) {
-        userMessages.set(uid, []);
-    }
-
-    res.render('index', { messages: userMessages.get(uid), uid });
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 server.listen(port, () => {

@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Диалог с телеграм-ботом</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+        h1 {
+            color: #007bff;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .chat-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 300px;
+            max-height: 80vh;
+            overflow-y: auto;
+            background-color: white;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            padding: 10px;
+            z-index: 1000;
+        }
+        .chat-message {
+            margin-bottom: 10px;
+            padding: 8px;
+            border-radius: 8px;
+        }
+        .bot-message {
+            background-color: #d4edda;
+        }
+        .user-message {
+            background-color: #cce5ff;
+        }
+        #message-form {
+            margin-top: 10px;
+            display: flex;
+        }
+        #message-input {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            margin-right: 10px;
+            font-size: 14px;
+        }
+        #send-button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        #send-button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Диалог с телеграм-ботом</h1>
+
+        <div class="chat-container" id="chat-container">
+            <ul id="messages-list"></ul>
+
+            <form id="message-form">
+                <input type="hidden" id="uid-input" name="uid">
+                <input type="text" id="message-input" name="message" placeholder="Введите сообщение">
+                <button type="submit" id="send-button">Отправить</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        function updateMessages(newMessages) {
+            $('#messages-list').empty();
+            newMessages.forEach(function(message) {
+                if (message.fromBot) {
+                    $('#messages-list').append(`<li class="chat-message bot-message">Администратор: ${message.text}</li>`);
+                } else {
+                    $('#messages-list').append(`<li class="chat-message user-message">Пользователь: ${message.text}</li>`);
+                }
+            });
+            $('#chat-container').scrollTop($('#chat-container')[0].scrollHeight);
+        }
+
+        function fetchMessages() {
+            $.get('/get-messages', function(data) {
+                updateMessages(data);
+            });
+        }
+
+        $(document).ready(function() {
+            const uid = getCookie('uid');
+            $('#uid-input').val(uid);
+
+            $('#message-form').submit(function(event) {
+                event.preventDefault();
+                const messageText = $('#message-input').val();
+                $.post('/send-message', { message: messageText }, function(response) {
+                    fetchMessages();
+                });
+                $('#message-input').val('');
+            });
+
+            fetchMessages();
+            setInterval(fetchMessages, 5000);
+        });
+
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+        }
+    </script>
+</body>
+</html>
