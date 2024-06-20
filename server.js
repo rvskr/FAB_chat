@@ -2,21 +2,19 @@ require('dotenv').config();
 
 const express = require('express');
 const TelegramBot = require('node-telegram-bot-api');
-const http = require('http');
 const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 const path = require('path');
 
 const app = express();
-const server = http.createServer(app);
 
 const port = process.env.PORT || 3000;
 
 app.use(cookieParser());
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json()); // Используем json парсер для обработки вебхуков
 
 const botToken = process.env.BOT_TOKEN;
-const bot = new TelegramBot(botToken, { polling: true });
+const bot = new TelegramBot(botToken);
 
 let userMessages = new Map();
 
@@ -25,6 +23,7 @@ function generateShortUid() {
     return Math.random().toString(36).substr(2, 5); // генерируем строку из 5 символов
 }
 
+// Функция для отправки сообщения в Telegram
 function sendTelegramMessage(chatId, messageText, uid, isFromBot) {
     console.log(`Sending message to chatId ${chatId}, uid: ${uid}, isFromBot: ${isFromBot}`);
     setTimeout(() => {
@@ -36,40 +35,13 @@ function sendTelegramMessage(chatId, messageText, uid, isFromBot) {
     }, 1000);
 }
 
-bot.on('message', (msg) => {
-    const chatId = msg.chat.id;
-    const messageText = msg.text;
-    const uid = generateShortUid();
-
-    console.log(`Received message from Telegram: ${messageText}, chatId: ${chatId}`);
-
-    if (!userMessages.has(uid)) {
-        userMessages.set(uid, []);
-    }
-    userMessages.get(uid).push({ text: messageText, fromBot: true, uid });
+// Маршрут для обработки вебхуков от Telegram
+app.post(`/bot${botToken}`, (req, res) => {
+    bot.processUpdate(req.body);
+    res.sendStatus(200);
 });
 
-bot.on('text', (msg) => {
-    const chatId = msg.chat.id;
-    const messageText = msg.text;
-
-    if (msg.reply_to_message && msg.reply_to_message.text.startsWith('Пользователь')) {
-        const quotedMessageText = msg.reply_to_message.text;
-        console.log(`Detected reply to message: ${quotedMessageText}`);
-
-        const regex = /^Пользователь ([a-zA-Z0-9-]+):/;
-        const match = quotedMessageText.match(regex);
-
-        if (match) {
-            const uid = match[1];
-            userMessages.get(uid).push({ text: messageText, fromBot: true, uid });
-            console.log(`Reply message added to list for uid: ${uid}`);
-        } else {
-            console.log('Failed to extract uid from quoted message:', quotedMessageText);
-        }
-    }
-});
-
+// Маршрут для отправки сообщения от пользователя
 app.post('/send-message', (req, res) => {
     const messageText = req.body.message;
     let uid = req.cookies.uid;
@@ -88,12 +60,14 @@ app.post('/send-message', (req, res) => {
     }
     userMessages.get(uid).push({ text: messageText, fromBot: false, uid });
 
+    // Отправляем сообщение в Telegram
     sendTelegramMessage(process.env.TELEGRAM_CHAT_ID, messageText, uid, false);
 
     console.log(`Message from user ${uid} sent to Telegram: ${messageText}`);
     res.send('Сообщение успешно отправлено в Telegram и на сайт!');
 });
 
+// Маршрут для получения сообщений пользователя
 app.get('/get-messages', (req, res) => {
     const uid = req.cookies.uid;
 
@@ -104,11 +78,16 @@ app.get('/get-messages', (req, res) => {
     res.json(userMessages.get(uid));
 });
 
-// Обновленный маршрут для отображения index.html из корня проекта
+// Маршрут для отображения index.html из корня проекта
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-server.listen(port, () => {
+// Устанавливаем вебхуки
+const webhookUrl = `https://your-service-name-v8vp.onrender.com/bot${botToken}`; // Замените на ваш реальный URL
+bot.setWebHook(webhookUrl);
+
+// Запускаем сервер
+app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
 });
