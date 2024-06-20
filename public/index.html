@@ -1,33 +1,29 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Анонимный Чат</title>
+    <title>Telegram Chat</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        #messages { max-width: 600px; margin: 20px auto; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
+        .message { padding: 5px; border-bottom: 1px solid #ddd; }
+    </style>
 </head>
 <body>
-    <h1>Анонимный Чат</h1>
-    <textarea id="message" placeholder="Введите ваше сообщение"></textarea>
-    <button onclick="sendMessage()">Отправить</button>
+    <div id="messages"></div>
 
     <script>
-        async function sendMessage() {
-            const message = document.getElementById('message').value;
-            const response = await fetch('/send-message', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ message })
-            });
-
-            if (response.ok) {
-                alert('Сообщение отправлено');
-                document.getElementById('message').value = '';
-            } else {
-                alert('Ошибка отправки сообщения');
-            }
+        async function fetchMessages() {
+            const response = await fetch('/messages');
+            const messages = await response.json();
+            const messagesDiv = document.getElementById('messages');
+            messagesDiv.innerHTML = messages.map(msg => `<div class="message">${msg.text}</div>`).join('');
         }
+
+        // Fetch messages every 5 seconds
+        setInterval(fetchMessages, 5000);
+        fetchMessages();
     </script>
 </body>
 </html>

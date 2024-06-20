@@ -1,5 +1,0 @@
-services:
-  - name: anonymous-chat
-    env: node
-    buildCommand: npm install
-    startCommand: npm start
