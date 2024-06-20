@@ -35,7 +35,6 @@
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             border-radius: 8px;
             padding: 10px;
-            display: none;
             z-index: 1000; /* Выше всех остальных элементов */
         }
         .chat-message {
@@ -73,128 +72,74 @@
         #send-button:hover {
             background-color: #0056b3; /* Изменение цвета фона при наведении */
         }
-        #fab-button {
-            position: absolute; /* Абсолютное позиционирование относительно родительского контейнера */
-            bottom: 20px;
-            right: 20px;
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background-color: #007bff; /* Цвет фона кнопки */
-            color: white;
-            font-size: 36px;
-            text-align: center;
-            line-height: 60px; /* Центрирование текста по вертикали */
-            border: none;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            cursor: pointer;
-            z-index: 1001; /* Выше всех остальных элементов */
-        }
-        #fab-button:hover {
-            background-color: #0056b3; /* Изменение цвета фона при наведении */
-        }
-        @media (max-width: 600px) {
-            .container {
-                padding: 10px;
-            }
-            .chat-container {
-                width: calc(100% - 40px);
-                max-width: calc(100% - 40px);
-                right: 20px;
-                left: 20px;
-            }
-            #fab-button {
-                display: block;
-            }
-        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Диалог с телеграм-ботом</h1>
 
-    <!-- Контейнер чата, скрытый по умолчанию -->
-    <div class="chat-container" id="chat-container">
-        <ul id="messages-list">
-            <% messages.forEach(function(message) { %>
-                <% if (message.fromBot) { %>
-                    <li class="chat-message bot-message">Администратор: <%= message.text %></li>
-                <% } else { %>
-                    <li class="chat-message user-message">Пользователь : <%= message.text %></li>
-                <% } %>
-            <% }); %>
-        </ul>
+        <!-- Контейнер чата, всегда открытый -->
+        <div class="chat-container" id="chat-container">
+            <ul id="messages-list">
+                <% messages.forEach(function(message) { %>
+                    <% if (message.fromBot) { %>
+                        <li class="chat-message bot-message">Администратор: <%= message.text %></li>
+                    <% } else { %>
+                        <li class="chat-message user-message">Пользователь : <%= message.text %></li>
+                    <% } %>
+                <% }); %>
+            </ul>
 
-        <form id="message-form">
-            <input type="hidden" id="uid-input" name="uid" value="<%= uid %>">
-            <input type="text" id="message-input" name="message" placeholder="Введите сообщение">
-            <button type="submit" id="send-button">Отправить</button>
-        </form>
+            <form id="message-form">
+                <input type="hidden" id="uid-input" name="uid" value="<%= uid %>">
+                <input type="text" id="message-input" name="message" placeholder="Введите сообщение">
+                <button type="submit" id="send-button">Отправить</button>
+            </form>
+        </div>
     </div>
 
-    <!-- Кнопка FAB -->
-    <button id="fab-button">+</button>
-</div>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io({ query: { uid: '<%= uid %>' } });
 
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="/socket.io/socket.io.js"></script>
-<script>
-    const socket = io({ query: { uid: '<%= uid %>' } });
-
-    function updateMessages(newMessages) {
-        $('#messages-list').empty();
-        newMessages.forEach(function(message) {
-            if (message.fromBot) {
-                $('#messages-list').append(`<li class="chat-message bot-message">Администратор : ${message.text}</li>`);
-            } else {
-                $('#messages-list').append(`<li class="chat-message user-message">Пользователь : ${message.text}</li>`);
-            }
-        });
-        // Прокрутка чата вниз при добавлении новых сообщений
-        $('#chat-container').scrollTop($('#chat-container')[0].scrollHeight);
-    }
-
-    socket.on('updateMessages', function(messages) {
-        updateMessages(messages);
-    });
-
-    $(document).ready(function() {
-        // Обработчик клика по кнопке FAB
-        $('#fab-button').click(function() {
-            $('#chat-container').slideToggle();
-        });
-
-        // Обработчик отправки формы
-        $('#message-form').submit(function(event) {
-            event.preventDefault();
-            const uid = $('#uid-input').val();
-            const messageText = $('#message-input').val();
-            socket.emit('sendMessage', messageText);
-            $.post('/send-message', { uid: uid, message: messageText }, function(response) {
-                console.log(response);
+        function updateMessages(newMessages) {
+            $('#messages-list').empty();
+            newMessages.forEach(function(message) {
+                if (message.fromBot) {
+                    $('#messages-list').append(`<li class="chat-message bot-message">Администратор : ${message.text}</li>`);
+                } else {
+                    $('#messages-list').append(`<li class="chat-message user-message">Пользователь : ${message.text}</li>`);
+                }
             });
-            $('#message-input').val('');
-        });
-
-        // Инициализация чата (открываем его, если есть сообщения)
-        const messages = <%- JSON.stringify(messages) %>;
-        if (messages.length > 0) {
-            $('#chat-container').show();
+            // Прокрутка чата вниз при добавлении новых сообщений
+            $('#chat-container').scrollTop($('#chat-container')[0].scrollHeight);
         }
-        updateMessages(messages);
 
-        // Прокрутка чата вниз при загрузке страницы, если есть сообщения
-        $('#chat-container').scrollTop($('#chat-container')[0].scrollHeight);
-
-        // Показать кнопку FAB на мобильных устройствах
-        $(window).resize(function() {
-            if ($(window).width() <= 600) {
-                $('#fab-button').show();
-            } else {
-                $('#fab-button').hide();
-            }
+        socket.on('updateMessages', function(messages) {
+            updateMessages(messages);
         });
-    });
-</script>
+
+        $(document).ready(function() {
+            // Обработчик отправки формы
+            $('#message-form').submit(function(event) {
+                event.preventDefault();
+                const uid = $('#uid-input').val();
+                const messageText = $('#message-input').val();
+                socket.emit('sendMessage', messageText);
+                $.post('/send-message', { uid: uid, message: messageText }, function(response) {
+                    console.log(response);
+                });
+                $('#message-input').val('');
+            });
+
+            // Инициализация чата (открываем его, если есть сообщения)
+            const messages = <%- JSON.stringify(messages) %>;
+            updateMessages(messages);
+
+            // Прокрутка чата вниз при загрузке страницы, если есть сообщения
+            $('#chat-container').scrollTop($('#chat-container')[0].scrollHeight);
+        });
+    </script>
 </body>
 </html>
