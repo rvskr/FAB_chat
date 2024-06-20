@@ -72,7 +72,12 @@ bot.on('text', (msg) => {
 
 app.post('/send-message', (req, res) => {
     const messageText = req.body.message;
-    const uid = req.cookies.uid || generateShortUid();
+    let uid = req.cookies.uid;
+
+    if (!uid) {
+        uid = generateShortUid();
+        res.cookie('uid', uid, { maxAge: 900000, httpOnly: true });
+    }
 
     if (!messageText) {
         return res.status(400).send('Сообщение не может быть пустым');
@@ -85,17 +90,15 @@ app.post('/send-message', (req, res) => {
 
     sendTelegramMessage(process.env.TELEGRAM_CHAT_ID, messageText, uid, false);
 
-    res.cookie('uid', uid, { maxAge: 900000, httpOnly: true });
     console.log(`Message from user ${uid} sent to Telegram: ${messageText}`);
-
     res.send('Сообщение успешно отправлено в Telegram и на сайт!');
 });
 
 app.get('/get-messages', (req, res) => {
-    const uid = req.cookies.uid || generateShortUid();
+    const uid = req.cookies.uid;
 
-    if (!userMessages.has(uid)) {
-        userMessages.set(uid, []);
+    if (!uid || !userMessages.has(uid)) {
+        return res.json([]);
     }
 
     res.json(userMessages.get(uid));

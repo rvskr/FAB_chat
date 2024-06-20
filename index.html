@@ -110,13 +110,18 @@
         }
 
         $(document).ready(function() {
-            const uid = getCookie('uid');
-            $('#uid-input').val(uid);
+            let uid = getCookie('uid');
+            if (!uid) {
+                uid = generateShortUid(); // Генерация нового uid, если его нет в cookies
+                document.cookie = `uid=${uid}; max-age=3600; path=/`; // Установка uid в cookies на час
+            }
+            $('#uid-input').val(uid); // Установка uid в скрытое поле формы
 
             $('#message-form').submit(function(event) {
                 event.preventDefault();
                 const messageText = $('#message-input').val();
-                $.post('/send-message', { message: messageText }, function(response) {
+                const uid = getCookie('uid'); // Получение текущего uid из cookies
+                $.post('/send-message', { message: messageText, uid: uid }, function(response) {
                     fetchMessages();
                 });
                 $('#message-input').val('');
@@ -130,6 +135,10 @@
             const value = `; ${document.cookie}`;
             const parts = value.split(`; ${name}=`);
             if (parts.length === 2) return parts.pop().split(';').shift();
+        }
+
+        function generateShortUid() {
+            return Math.random().toString(36).substr(2, 5); // Генерация короткого uid
         }
     </script>
 </body>
