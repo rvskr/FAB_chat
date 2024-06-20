@@ -27,11 +27,13 @@ const bot = new TelegramBot(botToken, { polling: true });
 let userMessages = new Map();
 
 function sendTelegramMessage(chatId, messageText, uid, isFromBot) {
-    if (isFromBot) {
-        bot.sendMessage(chatId, messageText);
-    } else {
-        bot.sendMessage(chatId, `Пользователь ${uid}: ${messageText}`);
-    }
+    setTimeout(() => {
+        if (isFromBot) {
+            bot.sendMessage(chatId, messageText);
+        } else {
+            bot.sendMessage(chatId, `Пользователь ${uid}: ${messageText}`);
+        }
+    }, 1000); // задержка 1 секунда перед отправкой
 }
 
 bot.on('message', (msg) => {
@@ -65,7 +67,6 @@ bot.on('text', (msg) => {
             userMessages.get(uid).push({ text: messageText, fromBot: true, uid });
             io.to(uid).emit('updateMessages', userMessages.get(uid));
 
-
             console.log(`Ответ отправлен пользователю ${uid}: ${messageText}`);
         } else {
             console.log('Не удалось извлечь uid из цитированного сообщения:', quotedMessageText);
@@ -77,12 +78,16 @@ app.post('/send-message', (req, res) => {
     const messageText = req.body.message;
     const uid = req.cookies.uid || uuidv4();
 
+    if (!messageText) {
+        return res.status(400).send('Сообщение не может быть пустым');
+    }
+
     if (!userMessages.has(uid)) {
         userMessages.set(uid, []);
     }
     userMessages.get(uid).push({ text: messageText, fromBot: false, uid });
 
-    bot.sendMessage(process.env.TELEGRAM_CHAT_ID, `Пользователь ${uid}: ${messageText}`);
+    sendTelegramMessage(process.env.TELEGRAM_CHAT_ID, messageText, uid, false);
 
     io.to(uid).emit('updateMessages', userMessages.get(uid));
 
