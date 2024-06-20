@@ -14,7 +14,6 @@ const port = process.env.PORT || 3000;
 
 app.use(cookieParser());
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, 'public')));
 
 const botToken = process.env.BOT_TOKEN;
 const bot = new TelegramBot(botToken, { polling: true });
@@ -102,8 +101,9 @@ app.get('/get-messages', (req, res) => {
     res.json(userMessages.get(uid));
 });
 
+// Обновленный маршрут для отображения index.html из корня проекта
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 server.listen(port, () => {
