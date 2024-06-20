@@ -36,7 +36,7 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        const socket = io();
+        const socket = io({ query: { uid: '<%= uid %>' } });
 
         function updateMessages(newMessages) {
             $('#messages-list').empty();
@@ -56,20 +56,16 @@
         $(document).ready(function() {
             updateMessages(<%- JSON.stringify(messages) %>);
 
-            setInterval(function() {
-                socket.emit('updateMessages', messages);
-            }, 5000);
-        });
-
-        $('#message-form').submit(function(event) {
-            event.preventDefault();
-            const uid = $('#uid-input').val();
-            const messageText = $('#message-input').val();
-            socket.emit('sendMessage', messageText);
-            $.post('/send-message', { uid: uid, message: messageText }, function(response) {
-                console.log(response);
+            $('#message-form').submit(function(event) {
+                event.preventDefault();
+                const uid = $('#uid-input').val();
+                const messageText = $('#message-input').val();
+                socket.emit('sendMessage', messageText);
+                $.post('/send-message', { uid: uid, message: messageText }, function(response) {
+                    console.log(response);
+                });
+                $('#message-input').val('');
             });
-            $('#message-input').val('');
         });
     </script>
 </body>

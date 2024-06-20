@@ -8,7 +8,7 @@ const http = require('http');
 const socketIo = require('socket.io');
 const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
-const { v4: uuidv4 } = require('uuid'); // Для генерации уникальных идентификаторов
+const { v4: uuidv4 } = require('uuid');
 
 const app = express();
 const server = http.createServer(app);
@@ -16,20 +16,16 @@ const io = socketIo(server);
 
 const port = process.env.PORT || 3000;
 
-app.use(cookieParser()); // Используем cookie-parser для работы с cookies
+app.use(cookieParser());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// Установка шаблонизатора EJS
 app.set('view engine', 'ejs');
 
-// Инициализация Telegram бота
 const botToken = process.env.BOT_TOKEN;
 const bot = new TelegramBot(botToken, { polling: true });
 
-// Хранилище сообщений
-let messages = [];
+let userMessages = new Map();
 
-// Функция для отправки сообщения в Telegram с указанием UID
 function sendTelegramMessage(chatId, messageText, uid, isFromBot) {
     if (isFromBot) {
         bot.sendMessage(chatId, messageText);
@@ -38,52 +34,87 @@ function sendTelegramMessage(chatId, messageText, uid, isFromBot) {
     }
 }
 
-// Обработчик сообщений от Telegram бота
 bot.on('message', (msg) => {
     const chatId = msg.chat.id;
     const messageText = msg.text;
+    const uid = uuidv4();
 
-    const uid = uuidv4(); // Генерируем уникальный идентификатор
+    if (!userMessages.has(uid)) {
+        userMessages.set(uid, []);
+    }
+    userMessages.get(uid).push({ text: messageText, fromBot: true, uid });
 
-    messages.push({ text: messageText, fromBot: true, uid });
+    io.to(uid).emit('updateMessages', userMessages.get(uid));
 
-    io.emit('updateMessages', messages); // Отправляем обновленные данные на клиент через Socket.io
-
-    sendTelegramMessage(chatId, messageText, uid, true); // Отправляем сообщение в Telegram с UID
+    sendTelegramMessage(chatId, messageText, uid, true);
 });
 
-// Обработчик отправки сообщения с сайта в Telegram
+// Обработка цитирования сообщений от бота
+bot.on('text', (msg) => {
+    const chatId = msg.chat.id;
+    const messageText = msg.text;
+
+    // Проверяем, содержит ли сообщение указание на цитирование
+    if (msg.reply_to_message && msg.reply_to_message.text.startsWith('Пользователь')) {
+        const quotedMessageText = msg.reply_to_message.text;
+
+        // Используем регулярное выражение для извлечения uid из текста
+        const regex = /^Пользователь ([a-zA-Z0-9-]+):/;
+        const match = quotedMessageText.match(regex);
+
+        if (match) {
+            const uid = match[1]; // Получаем uid из регулярного выражения
+            userMessages.get(uid).push({ text: messageText, fromBot: true, uid });
+            io.to(uid).emit('updateMessages', userMessages.get(uid));
+            sendTelegramMessage(chatId, messageText, uid, true);
+
+            console.log(`Ответ отправлен пользователю ${uid}: ${messageText}`);
+        } else {
+            console.log('Не удалось извлечь uid из цитированного сообщения:', quotedMessageText);
+        }
+    }
+});
+
 app.post('/send-message', (req, res) => {
     const messageText = req.body.message;
+    const uid = req.cookies.uid || uuidv4();
 
-    const uid = req.cookies.uid || uuidv4(); // Если у пользователя нет UID, генерируем новый
+    if (!userMessages.has(uid)) {
+        userMessages.set(uid, []);
+    }
+    userMessages.get(uid).push({ text: messageText, fromBot: false, uid });
 
     bot.sendMessage(process.env.TELEGRAM_CHAT_ID, `Пользователь ${uid}: ${messageText}`);
 
-    messages.push({ text: messageText, fromBot: false, uid });
+    io.to(uid).emit('updateMessages', userMessages.get(uid));
 
-    io.emit('updateMessages', messages);
-
-    // Устанавливаем cookie с UID
-    res.cookie('uid', uid, { maxAge: 900000, httpOnly: true }); // Время жизни 15 минут (900000 мс)
+    res.cookie('uid', uid, { maxAge: 900000, httpOnly: true });
 
     res.send('Сообщение успешно отправлено в Telegram и на сайт!');
+
+    console.log(`Сообщение от пользователя ${uid} отправлено в Telegram: ${messageText}`);
 });
 
-// Отображение главной страницы
 app.get('/', (req, res) => {
-    const uid = req.cookies.uid || uuidv4(); // Если у пользователя нет UID, генерируем новый
+    const uid = req.cookies.uid || uuidv4();
 
-    res.render('index', { messages, uid });
+    if (!userMessages.has(uid)) {
+        userMessages.set(uid, []);
+    }
+
+    res.render('index', { messages: userMessages.get(uid), uid });
 });
 
-// Настройка Socket.io
 io.on('connection', (socket) => {
     console.log('Пользователь подключился к сокету');
-    socket.emit('updateMessages', messages);
+    const uid = socket.handshake.query.uid;
+
+    if (uid) {
+        socket.join(uid);
+        socket.emit('updateMessages', userMessages.get(uid) || []);
+    }
 });
 
-// Запуск сервера
 server.listen(port, () => {
     console.log(`Сервер запущен на порту ${port}`);
 });
