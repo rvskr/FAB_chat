@@ -45,8 +45,6 @@ bot.on('message', (msg) => {
     userMessages.get(uid).push({ text: messageText, fromBot: true, uid });
 
     io.to(uid).emit('updateMessages', userMessages.get(uid));
-
-    sendTelegramMessage(chatId, messageText, uid, true);
 });
 
 // Обработка цитирования сообщений от бота
@@ -66,7 +64,7 @@ bot.on('text', (msg) => {
             const uid = match[1]; // Получаем uid из регулярного выражения
             userMessages.get(uid).push({ text: messageText, fromBot: true, uid });
             io.to(uid).emit('updateMessages', userMessages.get(uid));
-            sendTelegramMessage(chatId, messageText, uid, true);
+
 
             console.log(`Ответ отправлен пользователю ${uid}: ${messageText}`);
         } else {
