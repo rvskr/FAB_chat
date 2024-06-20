@@ -1,7 +1,6 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const axios = require('axios');
-const { WebhookClient } = require('discord.js');
 require('dotenv').config();
 
 const app = express();
