@@ -130,8 +130,8 @@ server.listen(port, () => {
     };
 
     const PUBLIC_URL = process.env.RENDER
-        ? 'https://your-service-name-v8vp.onrender.com/' // Замените на реальный публичный URL вашего приложения на render.com
-        : `http://localhost:${port}/startedUsers`; // Исправлено на корректный путь, если RENDER не установлено
+        ? 'https://your-service-name-v8vp.onrender.com/' 
+        : `http://localhost:${port}/startedUsers`; 
 
     setInterval(() => {
         makeRequest(PUBLIC_URL);

@@ -104,7 +104,7 @@
         }
 
         function fetchMessages() {
-            $.get('/get-messages', function(data) {
+            $.get('https://your-service-name-v8vp.onrender.com/get-messages', function(data) {
                 updateMessages(data);
             });
         }
@@ -121,7 +121,7 @@
                 event.preventDefault();
                 const messageText = $('#message-input').val();
                 const uid = getCookie('uid'); // Получение текущего uid из cookies
-                $.post('/send-message', { message: messageText, uid: uid }, function(response) {
+                $.post('https://your-service-name-v8vp.onrender.com/send-message', { message: messageText, uid: uid }, function(response) {
                     fetchMessages();
                 });
                 $('#message-input').val('');
