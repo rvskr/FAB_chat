@@ -1,9 +1,8 @@
 require('dotenv').config();
 
-const express = require('express');
 const TelegramBot = require('node-telegram-bot-api');
+const express = require('express');
 const http = require('http');
-const https = require('https'); // Добавляем модуль для поддержки HTTPS
 const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 const path = require('path');
@@ -123,7 +122,7 @@ server.listen(port, () => {
                 data += chunk;
             });
             resp.on('end', () => {
-                console.log('Scheduled task executed successfully');
+                console.log(`Scheduled task executed successfully at ${new Date().toLocaleString()}`);
             });
         }).on('error', (err) => {
             console.error('Error executing scheduled task:', err);
