@@ -3,6 +3,7 @@ require('dotenv').config();
 const express = require('express');
 const TelegramBot = require('node-telegram-bot-api');
 const http = require('http');
+const https = require('https'); // Добавляем модуль для поддержки HTTPS
 const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 const path = require('path');
@@ -111,4 +112,29 @@ app.get('/', (req, res) => {
 
 server.listen(port, () => {
     console.log(`Server is running on port ${port}`);
+
+    const interval = 15 * 60 * 1000; // 15 минут в миллисекундах
+
+    const makeRequest = (url) => {
+        const protocol = url.startsWith('https') ? https : http;
+        protocol.get(url, (resp) => {
+            let data = '';
+            resp.on('data', (chunk) => {
+                data += chunk;
+            });
+            resp.on('end', () => {
+                console.log('Scheduled task executed successfully');
+            });
+        }).on('error', (err) => {
+            console.error('Error executing scheduled task:', err);
+        });
+    };
+
+    const PUBLIC_URL = process.env.RENDER
+        ? 'https://your-service-name-v8vp.onrender.com/' // Замените на реальный публичный URL вашего приложения на render.com
+        : `http://localhost:${port}/startedUsers`; // Исправлено на корректный путь, если RENDER не установлено
+
+    setInterval(() => {
+        makeRequest(PUBLIC_URL);
+    }, interval);
 });
