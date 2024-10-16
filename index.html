@@ -91,6 +91,11 @@
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
+        if (window.location.href === 'https://rvskr.github.io/text-chat/') {
+            window.location.href = 'https://text-chat.onrender.com/';
+        }
+    </script>
+    <script>
         // Функция для определения, запущен ли на GitHub Pages
         function isOnGitHubPages() {
             return window.location.hostname === "rvskr.github.io" || // Замените на свой логин на GitHub
@@ -156,5 +161,6 @@
             setInterval(fetchMessages, 5000);
         });
     </script>
+    
 </body>
 </html>
