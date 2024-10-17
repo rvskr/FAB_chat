@@ -10,6 +10,7 @@
             margin: 20px;
             background-color: #343a40; /* Темный фон страницы */
             color: white; /* Белый цвет текста */
+            overflow-x: hidden; /* Отключение горизонтальной прокрутки */
         }
         .container {
             max-width: 800px;
@@ -19,6 +20,7 @@
             border-radius: 8px;
             box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
             position: relative;
+            overflow-x: hidden; /* Предотвращение горизонтальной прокрутки внутри контейнера */
         }
         h1 {
             color: #f8f9fa; /* Светлый цвет заголовка */
@@ -32,17 +34,20 @@
             width: 300px;
             max-height: 80vh;
             overflow-y: auto;
+            overflow-x: hidden; /* Предотвращение горизонтальной прокрутки внутри чата */
             background-color: #343a40; /* Темный фон чата */
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
             border-radius: 8px;
             padding: 10px;
-            z-index: 1000;
+
+            display: none; /* Чат изначально скрыт */
         }
         .chat-message {
             margin-bottom: 10px;
             padding: 8px;
             border-radius: 8px;
             word-wrap: break-word; /* Перенос слов на новую строку */
+            word-break: break-word; /* Перенос длинных слов */
             max-width: 100%; /* Ограничение ширины сообщений */
         }
         .bot-message {
@@ -78,6 +83,54 @@
         #send-button:hover {
             background-color: #0056b3; /* Цвет кнопки при наведении */
         }
+        /* FAB-кнопка для открытия чата */
+        .fab {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            background-color: #007bff;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            z-index: 1001;
+            font-size: 24px;
+        }
+        .fab:hover {
+            background-color: #0056b3;
+        }
+        /* Кнопка закрытия чата */
+        .close-chat {
+            position: absolute;
+            top: -10px; /* Размещение кнопки выше чата */
+            right: 20px;
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            z-index: 1003;
+        }
+        .close-chat:hover {
+            background-color: #c82333;
+        }
+        /* Убираем горизонтальную прокрутку у списка сообщений */
+        #messages-list {
+            padding: 0;
+            margin: 0;
+            list-style: none;
+            overflow-x: hidden; /* Предотвращение горизонтальной прокрутки */
+        }
     </style>
 </head>
 <body>
@@ -85,6 +138,7 @@
         <h1>Диалог с телеграм-ботом</h1>
 
         <div class="chat-container" id="chat-container">
+            <button class="close-chat" id="close-chat-button">&times;</button>
             <ul id="messages-list"></ul>
 
             <form id="message-form">
@@ -93,21 +147,13 @@
                 <button type="submit" id="send-button">Отправить</button>
             </form>
         </div>
+
+        <!-- FAB кнопка для открытия чата -->
+        <div class="fab" id="open-chat-button">+</div>
     </div>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
-        // Функция для определения, запущен ли на GitHub Pages
-        function isOnGitHubPages() {
-            return window.location.hostname === "rvskr.github.io" || // Замените на свой логин на GitHub
-                   window.location.hostname === "rvskr.github.io.";
-        }
-
-        // Если запущено на GitHub Pages, перенаправляем на другой URL
-        if (isOnGitHubPages()) {
-            window.location.href = "https://your-service-name-v8vp.onrender.com/";
-        }
-
         // Вспомогательные функции для работы с cookies
         function getCookie(name) {
             const value = `; ${document.cookie}`;
@@ -139,8 +185,20 @@
             });
         }
 
-        // Обработчик события отправки сообщения
+        // Открытие и закрытие чата
         $(document).ready(function() {
+            // Показать чат
+            $('#open-chat-button').click(function() {
+                $('#chat-container').show();
+                $('#open-chat-button').hide();
+            });
+
+            // Скрыть чат
+            $('#close-chat-button').click(function() {
+                $('#chat-container').hide();
+                $('#open-chat-button').show();
+            });
+
             let uid = getCookie('uid');
             if (!uid) {
                 uid = generateShortUid(); // Генерация нового uid, если его нет в cookies
@@ -162,10 +220,5 @@
             setInterval(fetchMessages, 5000); // Обновление сообщений каждые 5 секунд
         });
     </script>
-        <script>
-            if (window.location.href === 'https://rvskr.github.io/FAB-chat/') {
-                window.location.href = 'https://your-service-name-v8vp.onrender.com/';
-            }
-        </script>
 </body>
 </html>
