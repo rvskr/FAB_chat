@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,19 +8,20 @@
         body {
             font-family: Arial, sans-serif;
             margin: 20px;
-            background-color: #f8f9fa;
+            background-color: #343a40; /* Темный фон страницы */
+            color: white; /* Белый цвет текста */
         }
         .container {
             max-width: 800px;
             margin: 0 auto;
             padding: 20px;
-            background-color: white;
+            background-color: #495057; /* Темный фон контейнера */
             border-radius: 8px;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
             position: relative;
         }
         h1 {
-            color: #007bff;
+            color: #f8f9fa; /* Светлый цвет заголовка */
             text-align: center;
             margin-bottom: 20px;
         }
@@ -31,8 +32,8 @@
             width: 300px;
             max-height: 80vh;
             overflow-y: auto;
-            background-color: white;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            background-color: #343a40; /* Темный фон чата */
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
             border-radius: 8px;
             padding: 10px;
             z-index: 1000;
@@ -43,10 +44,10 @@
             border-radius: 8px;
         }
         .bot-message {
-            background-color: #d4edda;
+            background-color: #6c757d; /* Цвет для сообщений бота */
         }
         .user-message {
-            background-color: #cce5ff;
+            background-color: #007bff; /* Цвет для сообщений пользователя */
         }
         #message-form {
             margin-top: 10px;
@@ -59,9 +60,11 @@
             border-radius: 4px;
             margin-right: 10px;
             font-size: 14px;
+            background-color: #495057; /* Темный фон для поля ввода */
+            color: white; /* Белый цвет текста */
         }
         #send-button {
-            background-color: #007bff;
+            background-color: #007bff; /* Цвет кнопки отправки */
             color: white;
             border: none;
             border-radius: 4px;
@@ -70,7 +73,7 @@
             font-size: 14px;
         }
         #send-button:hover {
-            background-color: #0056b3;
+            background-color: #0056b3; /* Цвет кнопки при наведении */
         }
     </style>
 </head>
@@ -90,11 +93,6 @@
     </div>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script>
-        if (window.location.href === 'https://rvskr.github.io/text-chat/') {
-            window.location.href = 'https://your-service-name-v8vp.onrender.com/';
-        }
-    </script>
     <script>
         // Функция для определения, запущен ли на GitHub Pages
         function isOnGitHubPages() {
@@ -161,6 +159,10 @@
             setInterval(fetchMessages, 5000);
         });
     </script>
-    
+        <script>
+            if (window.location.href === 'https://rvskr.github.io/text-chat/') {
+                window.location.href = 'https://your-service-name-v8vp.onrender.com/';
+            }
+        </script>
 </body>
 </html>
