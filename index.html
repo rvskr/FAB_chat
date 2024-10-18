@@ -154,6 +154,11 @@
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
+        if (window.location.href === 'https://rvskr.github.io/text-chat/') {
+            window.location.href = 'https://text-chat.onrender.com/';
+        }
+    </script>
+    <script>
         // Вспомогательные функции для работы с cookies
         function getCookie(name) {
             const value = `; ${document.cookie}`;
@@ -220,5 +225,6 @@
             setInterval(fetchMessages, 5000); // Обновление сообщений каждые 5 секунд
         });
     </script>
+
 </body>
 </html>
