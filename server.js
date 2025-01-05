@@ -19,6 +19,7 @@ const botToken = process.env.BOT_TOKEN;
 const bot = new TelegramBot(botToken, { polling: true });
 
 let userMessages = new Map();
+let bannedUsers = new Map(); // Здесь будем хранить информацию о заблокированных пользователях
 
 // Функция для генерации короткого UID
 function generateShortUid() {
@@ -36,9 +37,29 @@ function sendTelegramMessage(chatId, messageText, uid, isFromBot) {
     }, 1000);
 }
 
+function isUserBanned(userId) {
+    const banData = bannedUsers.get(userId);
+    if (banData) {
+        const currentTime = Date.now();
+        if (currentTime < banData.banEndTime) {
+            return true; // Пользователь всё ещё забанен
+        } else {
+            bannedUsers.delete(userId); // Бан истёк, удаляем из списка
+        }
+    }
+    return false;
+}
+
 bot.on('message', (msg) => {
     const chatId = msg.chat.id;
     const messageText = msg.text;
+    const userId = msg.from.id;
+
+    if (isUserBanned(userId)) {
+        bot.sendMessage(chatId, 'Вы временно заблокированы. Дождитесь окончания бана.');
+        return;
+    }
+
     const uid = generateShortUid();
 
     console.log(`Received message from Telegram: ${messageText}, chatId: ${chatId}`);
@@ -49,24 +70,45 @@ bot.on('message', (msg) => {
     userMessages.get(uid).push({ text: messageText, fromBot: true, uid });
 });
 
-bot.on('text', (msg) => {
+bot.onText(/\/ban (\d+)/, (msg, match) => {
     const chatId = msg.chat.id;
-    const messageText = msg.text;
+    const duration = parseInt(match[1], 10);
+    const userId = msg.reply_to_message?.from?.id;
 
-    if (msg.reply_to_message && msg.reply_to_message.text.startsWith('Пользователь')) {
-        const quotedMessageText = msg.reply_to_message.text;
-        console.log(`Detected reply to message: ${quotedMessageText}`);
+    if (!userId) {
+        bot.sendMessage(chatId, 'Чтобы заблокировать пользователя, ответьте на его сообщение командой /ban <время в минутах>.');
+        return;
+    }
 
-        const regex = /^Пользователь ([a-zA-Z0-9-]+):/;
-        const match = quotedMessageText.match(regex);
+    const banEndTime = Date.now() + duration * 60 * 1000;
+    bannedUsers.set(userId, { banEndTime });
+    bot.sendMessage(chatId, `Пользователь ${userId} заблокирован на ${duration} минут.`);
+});
 
-        if (match) {
-            const uid = match[1];
-            userMessages.get(uid).push({ text: messageText, fromBot: true, uid });
-            console.log(`Reply message added to list for uid: ${uid}`);
-        } else {
-            console.log('Failed to extract uid from quoted message:', quotedMessageText);
-        }
+bot.onText(/\/unban (\d+)/, (msg, match) => {
+    const chatId = msg.chat.id;
+    const userId = parseInt(match[1], 10);
+
+    if (bannedUsers.has(userId)) {
+        bannedUsers.delete(userId);
+        bot.sendMessage(chatId, `Пользователь ${userId} разблокирован.`);
+    } else {
+        bot.sendMessage(chatId, `Пользователь ${userId} не был заблокирован.`);
+    }
+});
+
+bot.onText(/\/list/, (msg) => {
+    const chatId = msg.chat.id;
+
+    if (bannedUsers.size === 0) {
+        bot.sendMessage(chatId, 'Список заблокированных пользователей пуст.');
+    } else {
+        let message = 'Заблокированные пользователи:\n';
+        bannedUsers.forEach((banData, userId) => {
+            const remainingTime = Math.ceil((banData.banEndTime - Date.now()) / 1000 / 60);
+            message += `ID: ${userId}, Осталось минут: ${remainingTime}\n`;
+        });
+        bot.sendMessage(chatId, message);
     }
 });
 
