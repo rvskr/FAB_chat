@@ -4,132 +4,248 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Диалог с телеграм-ботом</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
+        :root {
+            --primary-color: #2563eb;
+            --primary-hover: #1d4ed8;
+            --dark-bg: #111827;
+            --dark-secondary: #1f2937;
+            --text-color: #f3f4f6;
+            --message-user: #3b82f6;
+            --message-bot: #4b5563;
+            --transition: all 0.3s ease;
+        }
+
         body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-            background-color: #343a40; /* Темный фон страницы */
-            color: white; /* Белый цвет текста */
-            overflow-x: hidden; /* Отключение горизонтальной прокрутки */
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            margin: 0;
+            background-color: var(--dark-bg);
+            color: var(--text-color);
+            overflow-x: hidden;
+            line-height: 1.5;
         }
+
         .container {
-            max-width: 800px;
+            max-width: 1000px;
             margin: 0 auto;
-            padding: 20px;
-            background-color: #495057; /* Темный фон контейнера */
-            border-radius: 8px;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            padding: 2rem;
+            background-color: var(--dark-secondary);
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
             position: relative;
-            overflow-x: hidden; /* Предотвращение горизонтальной прокрутки внутри контейнера */
         }
+
         h1 {
-            color: #f8f9fa; /* Светлый цвет заголовка */
+            color: var(--text-color);
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 2rem;
+            font-size: 2rem;
+            font-weight: 700;
         }
+
         .chat-container {
             position: fixed;
             bottom: 20px;
             right: 20px;
-            width: 300px;
+            width: 350px;
             max-height: 80vh;
-            overflow-y: auto;
-            overflow-x: hidden; /* Предотвращение горизонтальной прокрутки внутри чата */
-            background-color: #343a40; /* Темный фон чата */
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
-            border-radius: 8px;
-            padding: 10px;
-
-            display: none; /* Чат изначально скрыт */
-        }
-        .chat-message {
-            margin-bottom: 10px;
-            padding: 8px;
-            border-radius: 8px;
-            word-wrap: break-word; /* Перенос слов на новую строку */
-            word-break: break-word; /* Перенос длинных слов */
-            max-width: 100%; /* Ограничение ширины сообщений */
-        }
-        .bot-message {
-            background-color: #6c757d; /* Цвет для сообщений бота */
-        }
-        .user-message {
-            background-color: #007bff; /* Цвет для сообщений пользователя */
-            max-width: 80%; /* Ограничение ширины сообщений пользователя */
-        }
-        #message-form {
-            margin-top: 10px;
+            background-color: var(--dark-secondary);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            border-radius: 1rem;
+            padding: 1rem;
+            display: none;
+            transition: var(--transition);
             display: flex;
+            flex-direction: column;
         }
+
+        .chat-container.fullscreen {
+            width: 80%;
+            height: 90vh;
+            max-height: 100vh;
+            top: 1%;
+            left: 50%;
+            transform: translateX(-50%);
+            right: auto;
+            bottom: 0;
+            border-radius: 0;
+            z-index: 1000;
+        }
+
+        .chat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 1rem;
+            flex-shrink: 0;
+        }
+
+        .chat-title {
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .chat-controls {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .control-button {
+            background: none;
+            border: none;
+            color: var(--text-color);
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            transition: var(--transition);
+        }
+
+        .control-button:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .chat-message {
+            margin-bottom: 1rem;
+            padding: 1rem;
+            border-radius: 1rem;
+            max-width: 85%;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .bot-message {
+            background-color: var(--message-bot);
+            margin-right: auto;
+            border-bottom-left-radius: 0.25rem;
+        }
+
+        .user-message {
+            background-color: var(--message-user);
+            margin-left: auto;
+            border-bottom-right-radius: 0.25rem;
+        }
+
+        #messages-list {
+            padding: 0;
+            margin: 0;
+            list-style: none;
+            overflow-y: auto;
+            flex-grow: 1;
+            padding-right: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        #message-form {
+            display: flex;
+            gap: 0.5rem;
+            background-color: var(--dark-bg);
+            padding: 0.75rem;
+            border-radius: 0.75rem;
+            flex-shrink: 0;
+            width: calc(100% - 1.5rem);
+            box-sizing: border-box;
+        }
+
         #message-input {
             flex: 1;
-            padding: 8px;
-            border: 1px solid #ced4da;
-            border-radius: 4px;
-            margin-right: 10px;
-            font-size: 14px;
-            background-color: #495057; /* Темный фон для поля ввода */
-            color: white; /* Белый цвет текста */
+            padding: 0.75rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 0.5rem;
+            font-size: 0.95rem;
+            background-color: var(--dark-secondary);
+            color: var(--text-color);
+            transition: var(--transition);
+            min-width: 0; /* Предотвращает выход за границы */
         }
+
+        #message-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+        }
+
         #send-button {
-            background-color: #007bff; /* Цвет кнопки отправки */
+            background-color: var(--primary-color);
             color: white;
             border: none;
-            border-radius: 4px;
-            padding: 8px 16px;
+            border-radius: 0.5rem;
+            padding: 0.75rem 1.5rem;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 0.95rem;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            white-space: nowrap; /* Предотвращает перенос текста кнопки */
         }
+
         #send-button:hover {
-            background-color: #0056b3; /* Цвет кнопки при наведении */
+            background-color: var(--primary-hover);
         }
-        /* FAB-кнопка для открытия чата */
+
         .fab {
             position: fixed;
             bottom: 20px;
             right: 20px;
             width: 60px;
             height: 60px;
-            background-color: #007bff;
+            background-color: var(--primary-color);
             color: white;
             border-radius: 50%;
             display: flex;
             justify-content: center;
             align-items: center;
             cursor: pointer;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             z-index: 1001;
-            font-size: 24px;
+            font-size: 1.5rem;
+            transition: var(--transition);
         }
+
         .fab:hover {
-            background-color: #0056b3;
+            background-color: var(--primary-hover);
+            transform: scale(1.05);
         }
-        /* Кнопка закрытия чата */
-        .close-chat {
-            position: absolute;
-            top: -10px; /* Размещение кнопки выше чата */
-            right: 20px;
-            background-color: #dc3545;
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 20px;
-            height: 20px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            cursor: pointer;
-            z-index: 1003;
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 6px;
         }
-        .close-chat:hover {
-            background-color: #c82333;
+
+        ::-webkit-scrollbar-track {
+            background: var(--dark-bg);
+            border-radius: 3px;
         }
-        /* Убираем горизонтальную прокрутку у списка сообщений */
-        #messages-list {
-            padding: 0;
-            margin: 0;
-            list-style: none;
-            overflow-x: hidden; /* Предотвращение горизонтальной прокрутки */
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--message-bot);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--primary-color);
+        }
+
+        /* Медиа-запрос для мобильных устройств */
+        @media (max-width: 768px) {
+            .chat-container.fullscreen {
+                width: 95%;
+            }
+
+            #send-button span {
+                display: none; /* Скрываем текст кнопки на мобильных */
+            }
+
+            #send-button {
+                padding: 0.75rem;
+            }
         }
     </style>
 </head>
@@ -138,18 +254,33 @@
         <h1>Диалог с телеграм-ботом</h1>
 
         <div class="chat-container" id="chat-container">
-            <button class="close-chat" id="close-chat-button">&times;</button>
+            <div class="chat-header">
+                <div class="chat-title">Чат поддержки</div>
+                <div class="chat-controls">
+                    <button class="control-button" id="fullscreen-button">
+                        <i class="fas fa-expand"></i>
+                    </button>
+                    <button class="control-button" id="close-chat-button">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            
             <ul id="messages-list"></ul>
 
             <form id="message-form">
                 <input type="hidden" id="uid-input" name="uid">
-                <input type="text" id="message-input" name="message" placeholder="Введите сообщение">
-                <button type="submit" id="send-button">Отправить</button>
+                <input type="text" id="message-input" name="message" placeholder="Введите сообщение...">
+                <button type="submit" id="send-button">
+                    <i class="fas fa-paper-plane"></i>
+                    <span>Отправить</span>
+                </button>
             </form>
         </div>
 
-        <!-- FAB кнопка для открытия чата -->
-        <div class="fab" id="open-chat-button">+</div>
+        <div class="fab" id="open-chat-button">
+            <i class="fas fa-comments"></i>
+        </div>
     </div>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -157,8 +288,7 @@
         if (window.location.href === 'https://rvskr.github.io/FAB_chat/') {
             window.location.href = 'https://your-service-name-v8vp.onrender.com/';
         }
-    </script>
-    <script>
+
         // Вспомогательные функции для работы с cookies
         function getCookie(name) {
             const value = `; ${document.cookie}`;
@@ -167,64 +297,84 @@
         }
 
         function generateShortUid() {
-            return Math.random().toString(36).substr(2, 5); // Генерация короткого uid
+            return Math.random().toString(36).substr(2, 5);
         }
 
-        // Функция для обновления списка сообщений
+        // Функция для обновления списка сообщений с анимацией
         function updateMessages(newMessages) {
-            $('#messages-list').empty();
+            const messagesList = $('#messages-list');
+            messagesList.empty();
+            
             newMessages.forEach(function(message) {
-                if (message.fromBot) {
-                    $('#messages-list').append(`<li class="chat-message bot-message">Администратор: ${message.text}</li>`);
-                } else {
-                    $('#messages-list').append(`<li class="chat-message user-message">Пользователь: ${message.text}</li>`);
-                }
+                const messageElement = $('<li>').addClass('chat-message')
+                    .addClass(message.fromBot ? 'bot-message' : 'user-message')
+                    .text(`${message.fromBot ? 'Администратор: ' : 'Пользователь: '}${message.text}`);
+                
+                messagesList.append(messageElement);
             });
-            $('#chat-container').scrollTop($('#chat-container')[0].scrollHeight);
+
+            // Плавная прокрутка к последнему сообщению
+            messagesList.scrollTop(messagesList[0].scrollHeight);
         }
 
-        // Функция для загрузки сообщений с сервера
         function fetchMessages() {
             $.get('https://your-service-name-v8vp.onrender.com/get-messages', function(data) {
                 updateMessages(data);
             });
         }
 
-        // Открытие и закрытие чата
         $(document).ready(function() {
-            // Показать чат
+            const chatContainer = $('#chat-container');
+            const fullscreenButton = $('#fullscreen-button');
+            let isFullscreen = false;
+
+            // Обработка полноэкранного режима
+            fullscreenButton.click(function() {
+                isFullscreen = !isFullscreen;
+                chatContainer.toggleClass('fullscreen');
+                $(this).find('i').toggleClass('fa-expand fa-compress');
+            });
+
+            // Открытие чата
             $('#open-chat-button').click(function() {
-                $('#chat-container').show();
-                $('#open-chat-button').hide();
+                chatContainer.show();
+                $(this).hide();
+                fetchMessages(); // Обновляем сообщения при открытии
             });
 
-            // Скрыть чат
+            // Закрытие чата
             $('#close-chat-button').click(function() {
-                $('#chat-container').hide();
+                chatContainer.removeClass('fullscreen').hide();
                 $('#open-chat-button').show();
+                isFullscreen = false;
+                fullscreenButton.find('i').removeClass('fa-compress').addClass('fa-expand');
             });
 
-            let uid = getCookie('uid');
-            if (!uid) {
-                uid = generateShortUid(); // Генерация нового uid, если его нет в cookies
-                document.cookie = `uid=${uid}; max-age=3600; path=/`; // Установка uid в cookies на час
-            }
-            $('#uid-input').val(uid); // Установка uid в скрытое поле формы
+            // Инициализация uid
+            let uid = getCookie('uid') || generateShortUid();
+            document.cookie = `uid=${uid}; max-age=3600; path=/`;
+            $('#uid-input').val(uid);
 
+            // Обработка отправки сообщений
             $('#message-form').submit(function(event) {
                 event.preventDefault();
-                const messageText = $('#message-input').val();
-                const uid = getCookie('uid'); // Получение текущего uid из cookies
-                $.post('https://your-service-name-v8vp.onrender.com/send-message', { message: messageText, uid: uid }, function(response) {
-                    fetchMessages();
-                });
-                $('#message-input').val(''); // Очистка поля ввода после отправки
+                const messageInput = $('#message-input');
+                const messageText = messageInput.val().trim();
+                
+                if (messageText) {
+                    $.post('https://your-service-name-v8vp.onrender.com/send-message', 
+                        { message: messageText, uid: uid },
+                        function(response) {
+                            messageInput.val('');
+                            fetchMessages();
+                        }
+                    );
+                }
             });
 
-            fetchMessages();
-            setInterval(fetchMessages, 5000); // Обновление сообщений каждые 5 секунд
+            // Автоматическое обновление сообщений
+            setInterval(fetchMessages, 5000);
         });
     </script>
-
 </body>
 </html>
