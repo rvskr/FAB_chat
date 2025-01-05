@@ -349,7 +349,7 @@
     
             // Находим, сколько сообщений нужно добавить
             const startIdx = currentMessages.length;
-            
+    
             // Добавляем только новые сообщения
             for (let i = startIdx; i < newMessages.length; i++) {
                 const messageElement = createMessageElement(newMessages[i]);
@@ -377,8 +377,13 @@
         // Инициализация при загрузке страницы
         $(document).ready(function() {
             const chatContainer = $('#chat-container');
+            const openChatButton = $('#open-chat-button');
             const fullscreenButton = $('#fullscreen-button');
             let isFullscreen = false;
+    
+            // Убедимся, что чат изначально скрыт
+            chatContainer.hide();
+            openChatButton.show();
     
             // Обработка полноэкранного режима
             fullscreenButton.click(function() {
@@ -388,7 +393,7 @@
             });
     
             // Открытие чата
-            $('#open-chat-button').click(function() {
+            openChatButton.click(function() {
                 chatContainer.show();
                 $(this).hide();
                 debouncedFetch(); // Обновляем сообщения при открытии
@@ -397,7 +402,7 @@
             // Закрытие чата
             $('#close-chat-button').click(function() {
                 chatContainer.removeClass('fullscreen').hide();
-                $('#open-chat-button').show();
+                openChatButton.show();
                 isFullscreen = false;
                 fullscreenButton.find('i').removeClass('fa-compress').addClass('fa-expand');
             });
@@ -412,7 +417,7 @@
                 event.preventDefault();
                 const messageInput = $('#message-input');
                 const messageText = messageInput.val().trim();
-                
+    
                 if (messageText) {
                     $.post('https://your-service-name-v8vp.onrender.com/send-message', 
                         { message: messageText, uid: uid },
@@ -428,5 +433,6 @@
             pollMessages();
         });
     </script>
+    
 </body>
 </html>
