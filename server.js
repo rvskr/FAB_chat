@@ -126,6 +126,6 @@ server.listen(port, () => {
       .on('error', (err) => console.error('Error executing scheduled task:', err));
   };
 
-  const PUBLIC_URL = process.env.RENDER ? 'https://your-service-name-v8vp.onrender.com/' : `http://localhost:${port}/`;
+  const PUBLIC_URL = process.env.RENDER ? 'https://fab-chat.onrender.com/' : `http://localhost:${port}/`;
   setInterval(() => makeRequest(PUBLIC_URL), interval);
 });
