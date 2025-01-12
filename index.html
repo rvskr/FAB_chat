@@ -108,12 +108,16 @@
         }
 
         .chat-message {
-            margin-bottom: 1rem;
-            padding: 1rem;
-            border-radius: 1rem;
-            max-width: 85%;
-            animation: fadeIn 0.3s ease;
-        }
+    margin-bottom: 1rem;
+    padding: 1rem;
+    border-radius: 1rem;
+    max-width: 85%;
+    word-wrap: break-word; /* Перенос текста по словам */
+    word-break: break-word; /* Разбиваем длинные слова */
+    white-space: normal;   /* Разрешаем перенос строк */
+    animation: fadeIn 0.3s ease;
+}
+
 
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
