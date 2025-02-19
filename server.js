@@ -280,8 +280,9 @@ app.get('/get-messages', (req, res) => {
 
 // Главная страница
 app.get('/', (req, res) => {
+  // Если uid уже существует в сессии, не генерируем новый
   if (!req.session.uid) {
-    req.session.uid = generateShortUid();
+    req.session.uid = generateShortUid();  // Генерация нового uid только при первом посещении
   }
   console.log(`Session UID: ${req.session.uid}`);
   res.sendFile(path.join(__dirname, 'index.html'));
@@ -292,7 +293,7 @@ app.get('/get-uid', (req, res) => {
   if (req.session.uid) {
     return res.json({ uid: req.session.uid });
   }
-  req.session.uid = generateShortUid();
+  req.session.uid = generateShortUid(); // Генерация uid только если его нет
   return res.json({ uid: req.session.uid });
 });
 

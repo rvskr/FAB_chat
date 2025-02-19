@@ -1,4 +1,3 @@
-// Client-side WebSocket implementation
 $(document).ready(function() {
     const chatContainer = $('#chat-container');
     const openChatButton = $('#open-chat-button');
@@ -100,27 +99,40 @@ $(document).ready(function() {
         }
     });
     
-    // Получение UID с сервера
-    $.ajax({
-        url: `${serverUrl.replace('ws', 'http').replace('wss', 'https')}/get-uid`,
-        method: 'GET',
-        xhrFields: {
-            withCredentials: true
-        },
-        success: function(data) {
-            const uid = data.uid;
-            console.log(`ℹ️ Установленный UID: ${uid}`);
-            $('#uid-input').val(uid);
-            
-            // Подключаемся к WebSocket если чат уже открыт
-            if (chatContainer.is(':visible')) {
-                connectWebSocket(uid);
-            }
-        },
-        error: function(error) {
-            console.error('Ошибка при получении UID:', error);
+    // Проверяем, есть ли уже сохраненный UID в localStorage
+    const savedUid = localStorage.getItem('uid');
+    if (savedUid) {
+        $('#uid-input').val(savedUid);  // Заполняем поле uid
+        console.log(`ℹ️ Используем сохраненный UID: ${savedUid}`);
+        
+        // Если чат уже открыт, подключаемся к WebSocket
+        if (chatContainer.is(':visible')) {
+            connectWebSocket(savedUid);
         }
-    });
+    } else {
+        // Если UID нет в localStorage, запрашиваем его с сервера
+        $.ajax({
+            url: `${serverUrl.replace('ws', 'http').replace('wss', 'https')}/get-uid`,
+            method: 'GET',
+            xhrFields: {
+                withCredentials: true
+            },
+            success: function(data) {
+                const uid = data.uid;
+                console.log(`ℹ️ Установленный UID: ${uid}`);
+                $('#uid-input').val(uid);
+                localStorage.setItem('uid', uid);  // Сохраняем UID в localStorage
+                
+                // Подключаемся к WebSocket если чат уже открыт
+                if (chatContainer.is(':visible')) {
+                    connectWebSocket(uid);
+                }
+            },
+            error: function(error) {
+                console.error('Ошибка при получении UID:', error);
+            }
+        });
+    }
     
     // Отправка сообщения
     $('#message-form').submit(function(event) {
