@@ -284,7 +284,7 @@ app.get('/', (req, res) => {
     req.session.uid = generateShortUid();
   }
   console.log(`Session UID: ${req.session.uid}`);
-  res.sendFile(path.join(__dirname, 'index1.html'));
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 // Получение UID из сессии
