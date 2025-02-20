@@ -35,8 +35,10 @@ const telegramChatIds = process.env.TELEGRAM_CHAT_ID.split(',').map(id => id.tri
 
 // Настройка CORS
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:3000', // Укажите точный URL фронтенда
-  credentials: true // Разрешить передачу куки
+  origin: process.env.CLIENT_URL, // Например, https://your-frontend.onrender.com
+  credentials: true,
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 app.use(cookieParser());
@@ -50,14 +52,19 @@ const sessionParser = session({
   resave: false,
   saveUninitialized: false,
   cookie: {
-    httpOnly: false,
-    secure: process.env.NODE_ENV === 'production', // Secure только в продакшене
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // none для кросс-домена в продакшене
-    maxAge: 3600000 // 1 час
-  }
+    httpOnly: true,
+    secure: true, // Обязательно для HTTPS на Render
+    sameSite: 'none', // Для кросс-доменных запросов
+    maxAge: 3600000, // 1 час
+    path: '/' // Убедимся, что куки доступны для всех путей
+  },
+  rolling: true // Обновляем время жизни куки при каждом запросе
 });
 
 app.use(sessionParser);
+
+// Доверяем прокси Render
+app.set('trust proxy', 1);
 
 const generateShortUid = () => Math.random().toString(36).substr(2, 5);
 
@@ -160,10 +167,13 @@ bot.on('message', (msg) => {
 // WebSocket соединение
 wss.on('connection', (ws, req) => {
   sessionParser(req, {}, () => {
-    const uid = req.session.uid || generateShortUid();
-    if (!req.session.uid) {
+    let uid = req.session.uid;
+    if (!uid) {
+      uid = generateShortUid();
       req.session.uid = uid;
-      req.session.save(); // Сохраняем сессию явно
+      req.session.save((err) => {
+        if (err) console.error('Session save error:', err);
+      });
     }
 
     activeConnections.set(uid, ws);
@@ -199,10 +209,13 @@ wss.on('connection', (ws, req) => {
 // REST API
 app.post('/send-message', (req, res) => {
   const { message } = req.body;
-  const uid = req.session.uid || generateShortUid();
-  if (!req.session.uid) {
+  let uid = req.session.uid;
+  if (!uid) {
+    uid = generateShortUid();
     req.session.uid = uid;
-    req.session.save();
+    req.session.save((err) => {
+      if (err) console.error('Session save error:', err);
+    });
   }
 
   if (!message) return res.status(400).send('Сообщение не может быть пустым');
@@ -223,20 +236,28 @@ app.get('/get-messages', (req, res) => {
 });
 
 app.get('/', (req, res) => {
-  if (!req.session.uid) {
-    req.session.uid = generateShortUid();
-    req.session.save();
+  let uid = req.session.uid;
+  if (!uid) {
+    uid = generateShortUid();
+    req.session.uid = uid;
+    req.session.save((err) => {
+      if (err) console.error('Session save error:', err);
+    });
   }
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 app.get('/get-uid', (req, res) => {
-  if (!req.session.uid) {
-    req.session.uid = generateShortUid();
-    req.session.save();
+  let uid = req.session.uid;
+  if (!uid) {
+    uid = generateShortUid();
+    req.session.uid = uid;
+    req.session.save((err) => {
+      if (err) console.error('Session save error:', err);
+    });
   }
-  console.log('UID:', req.session.uid); // Логирование для отладки
-  res.json({ success: true, uid: req.session.uid });
+  console.log('UID on Render:', uid); // Логи для отладки
+  res.json({ success: true, uid });
 });
 
 server.listen(port, () => {
