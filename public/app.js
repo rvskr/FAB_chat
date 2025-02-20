@@ -15,8 +15,8 @@ $(document).ready(function() {
           $messageInput = $('#message-input'),
           $mediaInput = $('#media-input'),
           $uidInput = $('#uid-input'),
-          serverWsUrl = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost' ? 'ws://127.0.0.1:3000' : 'wss://fab-chat.onrender.com',
-          serverHttpUrl = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost' ? 'http://127.0.0.1:3000' : 'https://fab-chat.onrender.com/',
+          serverWsUrl = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost' ? 'ws://127.0.0.1:3000' : 'wss://1abc-178-136-106-132.ngrok-free.app',
+          serverHttpUrl = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost' ? 'http://127.0.0.1:3000' : 'https://1abc-178-136-106-132.ngrok-free.app',
           supportedMimeTypes = ['audio/ogg; codecs=opus', 'audio/webm; codecs=opus', 'audio/webm', 'audio/mp4'],
           recordingMimeType = supportedMimeTypes.find(type => MediaRecorder.isTypeSupported(type)) || 'audio/webm';
 
