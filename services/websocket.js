@@ -1,5 +1,5 @@
 const WebSocket = require('ws');
-const { sendTelegramMessage, sendTelegramVoice, sendTelegramFile, telegramChatIds } = require('./telegram');
+const { sendTelegramMessage, sendTelegramVoice, telegramChatIds } = require('./telegram');
 const { userMessages, activeConnections, generateShortUid, isUserBanned } = require('./userManagement');
 
 module.exports = (server, sessionParser) => {
@@ -48,28 +48,8 @@ module.exports = (server, sessionParser) => {
           userMessages.get(uid).push(newVoiceMessage);
           sendTelegramVoice(telegramChatIds, voiceBuffer, uid, data.mimeType);
           ws.send(JSON.stringify({ type: 'voice', message: newVoiceMessage }));
-        } else if (data.type === 'file') {
-          const fileBuffer = Buffer.from(data.file, 'base64');
-          const newFileMessage = { type: 'file', file: data.file, filename: data.filename, fromBot: false, uid };
-          if (!userMessages.has(uid)) userMessages.set(uid, []);
-          userMessages.get(uid).push(newFileMessage);
-          sendTelegramFile(telegramChatIds, fileBuffer, data.filename, uid);
-          ws.send(JSON.stringify({ type: 'file', message: newFileMessage }));
-        } else if (data.type === 'photo') {
-          const photoBuffer = Buffer.from(data.photo, 'base64');
-          const newPhotoMessage = { type: 'photo', file: data.photo, filename: data.filename, fromBot: false, uid };
-          if (!userMessages.has(uid)) userMessages.set(uid, []);
-          userMessages.get(uid).push(newPhotoMessage);
-          sendTelegramFile(telegramChatIds, photoBuffer, data.filename, uid); // Фото как документ
-          ws.send(JSON.stringify({ type: 'photo', message: newPhotoMessage }));
-        } else if (data.type === 'video') {
-          const videoBuffer = Buffer.from(data.video, 'base64');
-          const newVideoMessage = { type: 'video', file: data.video, filename: data.filename, fromBot: false, uid };
-          if (!userMessages.has(uid)) userMessages.set(uid, []);
-          userMessages.get(uid).push(newVideoMessage);
-          sendTelegramFile(telegramChatIds, videoBuffer, data.filename, uid); // Видео как документ
-          ws.send(JSON.stringify({ type: 'video', message: newVideoMessage }));
         }
+        // Обработка file, photo, video удалена, так как они теперь через HTTP
       });
 
       ws.on('close', () => {

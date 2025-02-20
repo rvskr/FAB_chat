@@ -1,15 +1,19 @@
 $(document).ready(function() {
-    const chatContainer = $('#chat-container');
-    const openChatButton = $('#open-chat-button');
-    const fullscreenButton = $('#fullscreen-button');
-    const recordButton = $('#record-button');
-    const stopButton = $('#stop-button');
-    const mediaButton = $('#media-button');
-    const recordStatus = $('#record-status');
-    const previewContainer = $('#preview-container');
-    const previewAudio = $('#preview-audio');
-    const sendVoiceButton = $('#send-voice-button');
-    const deleteVoiceButton = $('#delete-voice-button');
+    const elements = {
+        chatContainer: $('#chat-container'),
+        openChatButton: $('#open-chat-button'),
+        fullscreenButton: $('#fullscreen-button'),
+        recordButton: $('#record-button'),
+        stopButton: $('#stop-button'),
+        mediaButton: $('#media-button'),
+        recordStatus: $('#record-status'),
+        previewContainer: $('#preview-container'),
+        previewAudio: $('#preview-audio'),
+        sendVoiceButton: $('#send-voice-button'),
+        deleteVoiceButton: $('#delete-voice-button'),
+        messagesList: $('#messages-list')
+    };
+    
     let isFullscreen = false;
     let socket;
     let mediaRecorder;
@@ -22,22 +26,21 @@ $(document).ready(function() {
 
     const serverUrl = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost'
         ? 'ws://127.0.0.1:3000'
-        : 'wss://fab-chat.onrender.com';
+        : 'wss://wigtlfdkpc.loclx.io';
+    const httpServerUrl = serverUrl.replace('ws', 'http').replace('wss', 'https');
 
-    chatContainer.hide();
-    openChatButton.show();
-    previewContainer.hide();
+    elements.chatContainer.hide();
+    elements.openChatButton.show();
+    elements.previewContainer.hide();
 
     const supportedMimeTypes = ['audio/ogg; codecs=opus', 'audio/webm; codecs=opus', 'audio/webm', 'audio/mp4'];
     const recordingMimeType = supportedMimeTypes.find(type => MediaRecorder.isTypeSupported(type)) || 'audio/webm';
-    console.log('Выбранный MIME-тип для записи:', recordingMimeType);
 
     function connectWebSocket() {
         if (socket && socket.readyState === WebSocket.OPEN) return;
         socket = new WebSocket(serverUrl);
 
         socket.onopen = function() {
-            console.log('WebSocket соединение установлено');
             reconnectAttempts = 0;
             fetchMessages();
         };
@@ -45,120 +48,134 @@ $(document).ready(function() {
         socket.onmessage = function(event) {
             const data = JSON.parse(event.data);
             if (data.type === 'messages') updateMessages(data.messages);
-            else if (data.type === 'message') appendMessage(data.message);
-            else if (data.type === 'voice') appendVoice(data.message);
-            else if (data.type === 'file') appendFile(data.message);
-            else if (data.type === 'photo') appendPhoto(data.message);
-            else if (data.type === 'video') appendVideo(data.message);
+            else if (['message', 'voice', 'file', 'photo', 'video'].includes(data.type)) {
+                appendContent(data.type, data.message);
+            }
             else if (data.type === 'error') alert(data.message);
         };
 
         socket.onclose = function(event) {
-            console.log('WebSocket соединение закрыто', { code: event.code, reason: event.reason });
             if (reconnectAttempts < maxReconnectAttempts) {
                 reconnectAttempts++;
-                console.log(`Попытка переподключения ${reconnectAttempts}/${maxReconnectAttempts} через ${reconnectDelay} мс...`);
                 setTimeout(connectWebSocket, reconnectDelay);
             } else {
-                console.error('Превышено максимальное количество попыток переподключения');
                 alert('Потеряно соединение с сервером. Пожалуйста, обновите страницу.');
             }
-        };
-
-        socket.onerror = function(error) {
-            console.error('WebSocket ошибка:', error);
         };
     }
 
     function fetchMessages() {
         $.ajax({
-            url: `${serverUrl.replace('ws', 'http').replace('wss', 'https')}/get-messages`,
+            url: `${httpServerUrl}/get-messages`,
             method: 'GET',
             xhrFields: { withCredentials: true },
-            success: function(messages) { updateMessages(messages); },
+            success: updateMessages,
             error: function(err) { console.error('Ошибка получения сообщений:', err); }
         });
     }
 
-    function createMessageElement(message) {
-        return $('<li>')
-            .addClass('chat-message')
-            .addClass(message.fromBot ? 'bot-message' : 'user-message')
-            .text(`${message.fromBot ? 'Администратор: ' : 'Пользователь: '}${message.text}`);
-    }
-
-    function createVoiceElement(message) {
+    // Создание элементов сообщений унифицировано
+    function createMessageElement(message, contentCreator) {
         const li = $('<li>').addClass('chat-message').addClass(message.fromBot ? 'bot-message' : 'user-message');
-        const audio = $('<audio controls>').attr('src', message.voiceUrl || `data:audio/ogg;base64,${message.voice}`);
-        li.append(`${message.fromBot ? 'Администратор: ' : 'Пользователь: '}`).append(audio);
+        const header = $('<div>').addClass('message-header');
+        const content = $('<div>').addClass('message-content');
+        
+        if (contentCreator) contentCreator(content, message);
+        
+        if (message.fromBot) {
+            const avatar = message.adminAvatar ? 
+                $('<img>').addClass('profile-avatar').attr('src', message.adminAvatar) :
+                $('<div>').addClass('profile-placeholder admin').text('A');
+            header.append(avatar).append('Администратор');
+        } else {
+            header.append($('<div>').addClass('profile-placeholder user').text('U')).append('Пользователь');
+        }
+        
+        li.append(header).append(content);
         return li;
     }
 
-    function createFileElement(message) {
-        const li = $('<li>').addClass('chat-message').addClass(message.fromBot ? 'bot-message' : 'user-message');
-        const link = $('<a>').attr('href', message.fileUrl || `data:application/octet-stream;base64,${message.file}`).attr('download', message.filename).text(message.filename);
-        li.append(`${message.fromBot ? 'Администратор: ' : 'Пользователь: '}`).append(link);
-        return li;
+    // Создатели контента для разных типов сообщений
+    const contentCreators = {
+        message: (content, message) => content.text(message.text),
+        voice: (content, message) => {
+            content.append($('<audio controls>').attr('src', message.voiceUrl || `data:audio/ogg;base64,${message.voice}`));
+        },
+        file: (content, message) => {
+            const link = $('<a>')
+                .addClass('download-link')
+                .text(message.filename)
+                .data('url', message.fileUrl || `data:application/octet-stream;base64,${message.file}`)
+                .data('filename', message.filename);
+            const spinner = $('<span>').addClass('loading-spinner').hide();
+            content.append(link).append(spinner);
+        },
+        photo: (content, message) => {
+            content.append($('<img>').attr('src', message.fileUrl || `data:image/jpeg;base64,${message.photo || ''}`));
+        },
+        video: (content, message) => {
+            content.append($('<video controls>').attr('src', message.fileUrl || `data:video/mp4;base64,${message.video || ''}`));
+        }
+    };
+
+    // Обобщенная функция добавления контента
+    function appendContent(type, message) {
+        const $element = createMessageElement(message, contentCreators[type]);
+        elements.messagesList.append($element);
+        
+        if (type === 'file') {
+            setupDownloadLink($element.find('.download-link'));
+        }
+        
+        elements.messagesList.scrollTop(elements.messagesList[0].scrollHeight);
     }
 
-    function createPhotoElement(message) {
-        const li = $('<li>').addClass('chat-message').addClass(message.fromBot ? 'bot-message' : 'user-message');
-        const img = $('<img>').attr('src', message.fileUrl || `data:image/jpeg;base64,${message.file}`);
-        li.append(`${message.fromBot ? 'Администратор: ' : 'Пользователь: '}`).append(img);
-        return li;
-    }
-
-    function createVideoElement(message) {
-        const li = $('<li>').addClass('chat-message').addClass(message.fromBot ? 'bot-message' : 'user-message');
-        const video = $('<video controls>').attr('src', message.fileUrl || `data:video/mp4;base64,${message.file}`);
-        li.append(`${message.fromBot ? 'Администратор: ' : 'Пользователь: '}`).append(video);
-        return li;
-    }
-
-    function appendMessage(message) { $('#messages-list').append(createMessageElement(message)).scrollTop($('#messages-list')[0].scrollHeight); }
-    function appendVoice(message) { $('#messages-list').append(createVoiceElement(message)).scrollTop($('#messages-list')[0].scrollHeight); }
-    function appendFile(message) { $('#messages-list').append(createFileElement(message)).scrollTop($('#messages-list')[0].scrollHeight); }
-    function appendPhoto(message) { $('#messages-list').append(createPhotoElement(message)).scrollTop($('#messages-list')[0].scrollHeight); }
-    function appendVideo(message) { $('#messages-list').append(createVideoElement(message)).scrollTop($('#messages-list')[0].scrollHeight); }
-
-    function updateMessages(newMessages) {
-        const messagesList = $('#messages-list');
-        messagesList.empty();
-        newMessages.forEach(message => {
-            if (message.type === 'voice') messagesList.append(createVoiceElement(message));
-            else if (message.type === 'file') messagesList.append(createFileElement(message));
-            else if (message.type === 'photo') messagesList.append(createPhotoElement(message));
-            else if (message.type === 'video') messagesList.append(createVideoElement(message));
-            else messagesList.append(createMessageElement(message));
+    function updateMessages(messages) {
+        elements.messagesList.empty();
+        messages.forEach(message => {
+            appendContent(message.type || 'message', message);
         });
-        messagesList.scrollTop(messagesList[0].scrollHeight);
+        elements.messagesList.scrollTop(elements.messagesList[0].scrollHeight);
     }
 
-    fullscreenButton.click(function() {
-        isFullscreen = !isFullscreen;
-        chatContainer.toggleClass('fullscreen');
-        $(this).find('i').toggleClass('fa-expand fa-compress');
-    });
+    function setupDownloadLink($link) {
+        $link.click(function(e) {
+            e.preventDefault();
+            const url = $(this).data('url');
+            const filename = $(this).data('filename');
+            const $spinner = $(this).siblings('.loading-spinner');
 
-    openChatButton.click(function() {
-        chatContainer.show();
-        $(this).hide();
-        connectWebSocket();
-    });
+            $('#download-filename').text(filename);
+            $('#download-modal').show();
 
-    $('#close-chat-button').click(function() {
-        chatContainer.removeClass('fullscreen').hide();
-        openChatButton.show();
-        isFullscreen = false;
-        fullscreenButton.find('i').removeClass('fa-compress').addClass('fa-expand');
-        if (socket) socket.close();
-    });
+            $('#confirm-download').off('click').on('click', function() {
+                $link.addClass('downloading');
+                $spinner.show();
+                $('#download-modal').hide();
 
-    recordButton.click(function() {
-        if (!mediaRecorder || mediaRecorder.state === 'inactive') startRecording();
-    });
+                fetch(url)
+                    .then(response => response.blob())
+                    .then(blob => {
+                        const downloadUrl = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = downloadUrl;
+                        a.download = filename;
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                        window.URL.revokeObjectURL(downloadUrl);
+                    })
+                    .finally(() => {
+                        $link.removeClass('downloading');
+                        $spinner.hide();
+                    });
+            });
 
-    stopButton.click(function() { stopRecording(); });
+            $('#cancel-download').off('click').on('click', function() {
+                $('#download-modal').hide();
+            });
+        });
+    }
 
     function startRecording() {
         navigator.mediaDevices.getUserMedia({ audio: true })
@@ -169,25 +186,24 @@ $(document).ready(function() {
                 mediaRecorder.onstop = () => {
                     const audioBlob = new Blob(audioChunks, { type: recordingMimeType });
                     const audioUrl = URL.createObjectURL(audioBlob);
-                    previewAudio.attr('src', audioUrl);
-                    previewContainer.show();
-                    console.log('Формат записи:', audioBlob.type, 'Размер:', audioBlob.size);
+                    elements.previewAudio.attr('src', audioUrl);
+                    elements.previewContainer.show();
                     stream.getTracks().forEach(track => track.stop());
                 };
                 mediaRecorder.start();
-                recordButton.addClass('recording');
-                stopButton.show();
+                elements.recordButton.addClass('recording');
+                elements.stopButton.show();
+                $('#send-button, #media-button').hide();
                 recordSeconds = 0;
-                recordStatus.text('00:00').addClass('active');
+                elements.recordStatus.text('00:00').addClass('active');
                 recordTimer = setInterval(() => {
                     recordSeconds++;
                     const minutes = Math.floor(recordSeconds / 60).toString().padStart(2, '0');
                     const seconds = (recordSeconds % 60).toString().padStart(2, '0');
-                    recordStatus.text(`${minutes}:${seconds}`);
+                    elements.recordStatus.text(`${minutes}:${seconds}`);
                 }, 1000);
             })
             .catch(err => {
-                console.error('Ошибка доступа к микрофону:', err);
                 alert('Не удалось получить доступ к микрофону. Проверьте разрешения.');
             });
     }
@@ -195,14 +211,42 @@ $(document).ready(function() {
     function stopRecording() {
         if (mediaRecorder && mediaRecorder.state !== 'inactive') {
             mediaRecorder.stop();
-            recordButton.removeClass('recording');
-            stopButton.hide();
-            recordStatus.text('').removeClass('active');
+            elements.recordButton.removeClass('recording');
+            elements.stopButton.hide();
+            $('#send-button, #media-button').show();
+            elements.recordStatus.text('').removeClass('active');
             clearInterval(recordTimer);
         }
     }
 
-    sendVoiceButton.click(function() {
+    // Настройка обработчиков событий
+    elements.fullscreenButton.click(function() {
+        isFullscreen = !isFullscreen;
+        elements.chatContainer.toggleClass('fullscreen');
+        $(this).find('i').toggleClass('fa-expand fa-compress');
+    });
+
+    elements.openChatButton.click(function() {
+        elements.chatContainer.show();
+        $(this).hide();
+        connectWebSocket();
+    });
+
+    $('#close-chat-button').click(function() {
+        elements.chatContainer.removeClass('fullscreen').hide();
+        elements.openChatButton.show();
+        isFullscreen = false;
+        elements.fullscreenButton.find('i').removeClass('fa-compress').addClass('fa-expand');
+        if (socket) socket.close();
+    });
+
+    elements.recordButton.click(() => {
+        if (!mediaRecorder || mediaRecorder.state === 'inactive') startRecording();
+    });
+
+    elements.stopButton.click(stopRecording);
+
+    elements.sendVoiceButton.click(function() {
         const audioBlob = new Blob(audioChunks, { type: recordingMimeType });
         const reader = new FileReader();
         reader.onload = () => {
@@ -210,35 +254,56 @@ $(document).ready(function() {
             if (socket && socket.readyState === WebSocket.OPEN) {
                 socket.send(JSON.stringify({ type: 'voice', voice: base64, mimeType: recordingMimeType }));
             }
-            previewContainer.hide();
-            URL.revokeObjectURL(previewAudio.attr('src'));
+            elements.previewContainer.hide();
+            URL.revokeObjectURL(elements.previewAudio.attr('src'));
         };
         reader.readAsDataURL(audioBlob);
     });
 
-    deleteVoiceButton.click(function() {
-        previewContainer.hide();
-        URL.revokeObjectURL(previewAudio.attr('src'));
+    elements.deleteVoiceButton.click(function() {
+        elements.previewContainer.hide();
+        URL.revokeObjectURL(elements.previewAudio.attr('src'));
         audioChunks = [];
     });
 
-    mediaButton.click(function() { $('#media-input').click(); });
+    elements.mediaButton.click(() => $('#media-input').click());
 
     $('#media-input').change(function() {
         const file = this.files[0];
         if (file) {
-            const reader = new FileReader();
-            reader.onload = () => {
-                const base64 = reader.result.split(',')[1];
-                let type = 'file';
-                if (file.type.startsWith('image/')) type = 'photo';
-                else if (file.type.startsWith('video/')) type = 'video';
-                if (socket && socket.readyState === WebSocket.OPEN) {
-                    socket.send(JSON.stringify({ type, [type]: base64, filename: file.name }));
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('uid', $('#uid-input').val());
+            formData.append('type', file.type.startsWith('image/') ? 'photo' : file.type.startsWith('video/') ? 'video' : 'file');
+    
+            $('#upload-progress').show();
+            $.ajax({
+                url: `${httpServerUrl}/upload`,
+                method: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                xhr: function() {
+                    const xhr = new window.XMLHttpRequest();
+                    xhr.upload.addEventListener('progress', function(e) {
+                        if (e.lengthComputable) {
+                            const percent = (e.loaded / e.total) * 100;
+                            $('#progress-bar').css('width', percent + '%');
+                        }
+                    }, false);
+                    return xhr;
+                },
+                success: function() {
+                    $('#upload-progress').hide();
+                    $('#progress-bar').css('width', '0%');
+                },
+                error: function() {
+                    $('#upload-progress').hide();
+                    $('#progress-bar').css('width', '0%');
+                    alert('Ошибка при загрузке файла');
                 }
-                this.value = '';
-            };
-            reader.readAsDataURL(file);
+            });
+            this.value = '';
         }
     });
 
@@ -253,29 +318,12 @@ $(document).ready(function() {
     });
 
     $.ajax({
-        url: `${serverUrl.replace('ws', 'http').replace('wss', 'https')}/get-uid`,
+        url: `${httpServerUrl}/get-uid`,
         method: 'GET',
         xhrFields: { withCredentials: true },
         success: function(response) {
             $('#uid-input').val(response.uid);
-            console.log('UID получен:', response.uid);
-            if (chatContainer.is(':visible')) connectWebSocket();
+            if (elements.chatContainer.is(':visible')) connectWebSocket();
         }
     });
-});
-
-const recordButton = document.getElementById("record-button");
-const stopButton = document.getElementById("stop-button");
-const chatContainer = document.getElementById("chat-container");
-
-recordButton.addEventListener("click", () => {
-    chatContainer.classList.add("recording"); // Скрываем текстовое поле
-    stopButton.style.display = "block";
-    recordButton.style.display = "none";
-});
-
-stopButton.addEventListener("click", () => {
-    chatContainer.classList.remove("recording"); // Показываем обратно
-    stopButton.style.display = "none";
-    recordButton.style.display = "block";
 });
