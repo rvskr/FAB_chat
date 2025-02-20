@@ -22,7 +22,7 @@ $(document).ready(function() {
 
     const serverUrl = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost'
         ? 'ws://127.0.0.1:3000'
-        : 'wss://1abc-178-136-106-132.ngrok-free.app';
+        : 'wss://fab-chat.onrender.com';
 
     chatContainer.hide();
     openChatButton.show();
