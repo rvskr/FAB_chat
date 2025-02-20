@@ -1,58 +1,59 @@
 $(document).ready(function() {
-    const $chatContainer = $('#chat-container'),
-          $openChatButton = $('#open-chat-button'),
-          $fullscreenButton = $('#fullscreen-button'),
-          $recordButton = $('#record-button'),
-          $stopButton = $('#stop-button'),
-          $mediaButton = $('#media-button'),
-          $recordStatus = $('#record-status'),
-          $previewContainer = $('#preview-container'),
-          $previewAudio = $('#preview-audio'),
-          $sendVoiceButton = $('#send-voice-button'),
-          $deleteVoiceButton = $('#delete-voice-button'),
-          $messagesList = $('#messages-list'),
-          $messageForm = $('#message-form'),
-          $messageInput = $('#message-input'),
-          $mediaInput = $('#media-input'),
-          $uidInput = $('#uid-input'),
-          serverWsUrl = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost' ? 'ws://127.0.0.1:3000' : 'wss://1abc-178-136-106-132.ngrok-free.app',
-          serverHttpUrl = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost' ? 'http://127.0.0.1:3000' : 'https://1abc-178-136-106-132.ngrok-free.app',
-          supportedMimeTypes = ['audio/ogg; codecs=opus', 'audio/webm; codecs=opus', 'audio/webm', 'audio/mp4'],
-          recordingMimeType = supportedMimeTypes.find(type => MediaRecorder.isTypeSupported(type)) || 'audio/webm';
+    const chatContainer = $('#chat-container');
+    const openChatButton = $('#open-chat-button');
+    const fullscreenButton = $('#fullscreen-button');
+    const recordButton = $('#record-button');
+    const stopButton = $('#stop-button');
+    const mediaButton = $('#media-button');
+    const recordStatus = $('#record-status');
+    const previewContainer = $('#preview-container');
+    const previewAudio = $('#preview-audio');
+    const sendVoiceButton = $('#send-voice-button');
+    const deleteVoiceButton = $('#delete-voice-button');
+    let isFullscreen = false;
+    let socket;
+    let mediaRecorder;
+    let audioChunks = [];
+    let recordTimer;
+    let recordSeconds = 0;
+    let reconnectAttempts = 0;
+    const maxReconnectAttempts = 5;
+    const reconnectDelay = 5000;
 
-    let isFullscreen = false,
-        socket,
-        mediaRecorder,
-        audioChunks = [],
-        recordTimer,
-        recordSeconds = 0,
-        reconnectAttempts = 0,
-        pendingUploads = new Map(),
-        maxReconnectAttempts = 5,
-        reconnectDelay = 5000;
+    const serverUrl = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost'
+        ? 'ws://127.0.0.1:3000'
+        : 'wss://fab-chat.onrender.com';
 
+    chatContainer.hide();
+    openChatButton.show();
+    previewContainer.hide();
+
+    const supportedMimeTypes = ['audio/ogg; codecs=opus', 'audio/webm; codecs=opus', 'audio/webm', 'audio/mp4'];
+    const recordingMimeType = supportedMimeTypes.find(type => MediaRecorder.isTypeSupported(type)) || 'audio/webm';
     console.log('Выбранный MIME-тип для записи:', recordingMimeType);
-
-    $chatContainer.addClass('hidden');
-    $openChatButton.show();
 
     function connectWebSocket() {
         if (socket && socket.readyState === WebSocket.OPEN) return;
-        socket = new WebSocket(serverWsUrl);
+        socket = new WebSocket(serverUrl);
 
-        socket.onopen = () => {
+        socket.onopen = function() {
             console.log('WebSocket соединение установлено');
             reconnectAttempts = 0;
             fetchMessages();
         };
 
-        socket.onmessage = (event) => {
+        socket.onmessage = function(event) {
             const data = JSON.parse(event.data);
             if (data.type === 'messages') updateMessages(data.messages);
-            else appendMessage(data.type, data.message);
+            else if (data.type === 'message') appendMessage(data.message);
+            else if (data.type === 'voice') appendVoice(data.message);
+            else if (data.type === 'file') appendFile(data.message);
+            else if (data.type === 'photo') appendPhoto(data.message);
+            else if (data.type === 'video') appendVideo(data.message);
+            else if (data.type === 'error') alert(data.message);
         };
 
-        socket.onclose = (event) => {
+        socket.onclose = function(event) {
             console.log('WebSocket соединение закрыто', { code: event.code, reason: event.reason });
             if (reconnectAttempts < maxReconnectAttempts) {
                 reconnectAttempts++;
@@ -64,170 +65,125 @@ $(document).ready(function() {
             }
         };
 
-        socket.onerror = (error) => console.error('WebSocket ошибка:', error);
+        socket.onerror = function(error) {
+            console.error('WebSocket ошибка:', error);
+        };
     }
 
     function fetchMessages() {
         $.ajax({
-            url: `${serverHttpUrl}/get-messages`,
+            url: `${serverUrl.replace('ws', 'http').replace('wss', 'https')}/get-messages`,
             method: 'GET',
             xhrFields: { withCredentials: true },
-            success: updateMessages,
-            error: (err) => console.error('Ошибка получения сообщений:', err)
+            success: function(messages) { updateMessages(messages); },
+            error: function(err) { console.error('Ошибка получения сообщений:', err); }
         });
     }
 
-    function createDownloadLink(url, filename, label) {
-        return $('<a>')
-            .addClass('download-link')
-            .text(label || 'Скачать')
-            .click((e) => {
-                e.preventDefault();
-                if (confirm(`Скачать ${filename || 'файл'}?`)) {
-                    $(e.target).addClass('downloading');
-                    downloadFile(url, filename);
-                    setTimeout(() => $(e.target).removeClass('downloading'), 1000);
-                }
-            });
+    function createMessageElement(message) {
+        return $('<li>')
+            .addClass('chat-message')
+            .addClass(message.fromBot ? 'bot-message' : 'user-message')
+            .text(`${message.fromBot ? 'Администратор: ' : 'Пользователь: '}${message.text}`);
     }
 
-    function addProfileIcon(header, message) {
-        if (message.fromBot && message.photoUrl) {
-            header.append($('<img>').attr('src', message.photoUrl).css({ width: '30px', height: '30px', borderRadius: '50%' }));
-        } else {
-            header.append($('<span>').addClass(`profile-placeholder ${message.fromBot ? 'admin' : 'user'}`).text(message.fromBot ? 'A' : 'U'));
-        }
+    function createVoiceElement(message) {
+        const li = $('<li>').addClass('chat-message').addClass(message.fromBot ? 'bot-message' : 'user-message');
+        const audio = $('<audio controls>').attr('src', message.voiceUrl || `data:audio/ogg;base64,${message.voice}`);
+        li.append(`${message.fromBot ? 'Администратор: ' : 'Пользователь: '}`).append(audio);
+        return li;
     }
 
-    function createMessage(type, message, isPending = false) {
-        const li = $('<li>').addClass('chat-message').addClass(message.fromBot ? 'bot-message' : 'user-message').addClass(type),
-              header = $('<div>').addClass('message-header'),
-              content = $('<div>').addClass('message-content');
-
-        addProfileIcon(header, message);
-        header.append(message.fromBot ? 'Администратор' : 'Пользователь');
-        li.append(header);
-
-        if (isPending) {
-            content.append(`<span class="loading-spinner"><i class="fas fa-spinner fa-spin"></i></span> ${message.filename || 'Голосовое сообщение'}`);
-        } else {
-            switch (type) {
-                case 'message':
-                    content.text(message.text);
-                    break;
-                case 'voice':
-                    content.empty()
-                           .append($('<audio controls>').attr('src', message.voiceUrl || `data:audio/ogg;base64,${message.voice}`))
-                           .append(' ')
-                           .append(createDownloadLink(message.voiceUrl || `data:audio/ogg;base64,${message.voice}`, message.filename || 'voice.ogg'));
-                    break;
-                case 'file':
-                    content.append(createDownloadLink(message.fileUrl || `data:application/octet-stream;base64,${message.file}`, message.filename || 'file', message.filename));
-                    break;
-                case 'photo':
-                    content.append($('<img>').attr('src', message.fileUrl || `data:image/jpeg;base64,${message.file}`))
-                           .append(' ')
-                           .append(createDownloadLink(message.fileUrl || `data:image/jpeg;base64,${message.file}`, message.filename || 'photo.jpg'));
-                    break;
-                case 'video':
-                    content.append($('<video controls>').attr('src', message.fileUrl || `data:video/mp4;base64,${message.file}`))
-                           .append(' ')
-                           .append(createDownloadLink(message.fileUrl || `data:video/mp4;base64,${message.file}`, message.filename || 'video.mp4'));
-                    break;
-            }
-        }
-        return li.append(content);
+    function createFileElement(message) {
+        const li = $('<li>').addClass('chat-message').addClass(message.fromBot ? 'bot-message' : 'user-message');
+        const link = $('<a>').attr('href', message.fileUrl || `data:application/octet-stream;base64,${message.file}`).attr('download', message.filename).text(message.filename);
+        li.append(`${message.fromBot ? 'Администратор: ' : 'Пользователь: '}`).append(link);
+        return li;
     }
 
-    function appendMessage(type, message) {
-        if (type === 'voice' && message.fromBot === false) {
-            const pending = Array.from(pendingUploads.values()).reverse().find(li => 
-                li.hasClass('voice') && li.hasClass('user-message')
-            );
-            if (pending) {
-                const key = Array.from(pendingUploads.entries()).find(([k, v]) => v === pending)[0];
-                pending.find('.message-content').empty().append(
-                    $('<audio controls>').attr('src', message.voiceUrl || `data:audio/ogg;base64,${message.voice}`),
-                    ' ',
-                    createDownloadLink(message.voiceUrl || `data:audio/ogg;base64,${message.voice}`, message.filename || 'voice.ogg')
-                );
-                pendingUploads.delete(key);
-                $messagesList.scrollTop($messagesList[0].scrollHeight);
-                return;
-            }
-        }
-        const key = `${type}-${message.filename || message.file || Date.now()}`,
-              pending = pendingUploads.get(key);
-        if (pending) {
-            const newContent = createMessage(type, message).find('.message-content');
-            pending.find('.message-content').empty().append(newContent.contents());
-            pendingUploads.delete(key);
-        } else {
-            $messagesList.append(createMessage(type, message)).scrollTop($messagesList[0].scrollHeight);
-        }
+    function createPhotoElement(message) {
+        const li = $('<li>').addClass('chat-message').addClass(message.fromBot ? 'bot-message' : 'user-message');
+        const img = $('<img>').attr('src', message.fileUrl || `data:image/jpeg;base64,${message.file}`);
+        li.append(`${message.fromBot ? 'Администратор: ' : 'Пользователь: '}`).append(img);
+        return li;
     }
 
-    function updateMessages(messages) {
-        $messagesList.empty().append(messages.map(msg => createMessage(msg.type, msg))).scrollTop($messagesList[0].scrollHeight);
+    function createVideoElement(message) {
+        const li = $('<li>').addClass('chat-message').addClass(message.fromBot ? 'bot-message' : 'user-message');
+        const video = $('<video controls>').attr('src', message.fileUrl || `data:video/mp4;base64,${message.file}`);
+        li.append(`${message.fromBot ? 'Администратор: ' : 'Пользователь: '}`).append(video);
+        return li;
     }
 
-    function downloadFile(url, filename) {
-        const a = $('<a>').attr({ href: url, download: filename }).appendTo('body');
-        a[0].click();
-        a.remove();
+    function appendMessage(message) { $('#messages-list').append(createMessageElement(message)).scrollTop($('#messages-list')[0].scrollHeight); }
+    function appendVoice(message) { $('#messages-list').append(createVoiceElement(message)).scrollTop($('#messages-list')[0].scrollHeight); }
+    function appendFile(message) { $('#messages-list').append(createFileElement(message)).scrollTop($('#messages-list')[0].scrollHeight); }
+    function appendPhoto(message) { $('#messages-list').append(createPhotoElement(message)).scrollTop($('#messages-list')[0].scrollHeight); }
+    function appendVideo(message) { $('#messages-list').append(createVideoElement(message)).scrollTop($('#messages-list')[0].scrollHeight); }
+
+    function updateMessages(newMessages) {
+        const messagesList = $('#messages-list');
+        messagesList.empty();
+        newMessages.forEach(message => {
+            if (message.type === 'voice') messagesList.append(createVoiceElement(message));
+            else if (message.type === 'file') messagesList.append(createFileElement(message));
+            else if (message.type === 'photo') messagesList.append(createPhotoElement(message));
+            else if (message.type === 'video') messagesList.append(createVideoElement(message));
+            else messagesList.append(createMessageElement(message));
+        });
+        messagesList.scrollTop(messagesList[0].scrollHeight);
     }
 
-    $fullscreenButton.click(() => {
+    fullscreenButton.click(function() {
         isFullscreen = !isFullscreen;
-        $chatContainer.toggleClass('fullscreen');
-        $fullscreenButton.find('i').toggleClass('fa-expand fa-compress');
-        if (!isFullscreen) $chatContainer.removeClass('hidden');
+        chatContainer.toggleClass('fullscreen');
+        $(this).find('i').toggleClass('fa-expand fa-compress');
     });
 
-    $openChatButton.click(() => {
-        $chatContainer.removeClass('hidden');
-        $openChatButton.hide();
+    openChatButton.click(function() {
+        chatContainer.show();
+        $(this).hide();
         connectWebSocket();
     });
 
-    $('#close-chat-button').click(() => {
-        if (isFullscreen) {
-            isFullscreen = false;
-            $chatContainer.removeClass('fullscreen');
-        }
-        $chatContainer.addClass('hidden');
-        $openChatButton.show();
+    $('#close-chat-button').click(function() {
+        chatContainer.removeClass('fullscreen').hide();
+        openChatButton.show();
+        isFullscreen = false;
+        fullscreenButton.find('i').removeClass('fa-compress').addClass('fa-expand');
         if (socket) socket.close();
     });
 
-    $recordButton.click(() => {
+    recordButton.click(function() {
         if (!mediaRecorder || mediaRecorder.state === 'inactive') startRecording();
     });
 
-    $stopButton.click(stopRecording);
+    stopButton.click(function() { stopRecording(); });
 
     function startRecording() {
         navigator.mediaDevices.getUserMedia({ audio: true })
             .then(stream => {
                 mediaRecorder = new MediaRecorder(stream, { mimeType: recordingMimeType });
                 audioChunks = [];
-                mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+                mediaRecorder.ondataavailable = event => audioChunks.push(event.data);
                 mediaRecorder.onstop = () => {
                     const audioBlob = new Blob(audioChunks, { type: recordingMimeType });
-                    $previewAudio.attr('src', URL.createObjectURL(audioBlob));
-                    $previewContainer.show();
+                    const audioUrl = URL.createObjectURL(audioBlob);
+                    previewAudio.attr('src', audioUrl);
+                    previewContainer.show();
+                    console.log('Формат записи:', audioBlob.type, 'Размер:', audioBlob.size);
                     stream.getTracks().forEach(track => track.stop());
                 };
                 mediaRecorder.start();
-                $recordButton.addClass('recording');
-                $stopButton.show();
+                recordButton.addClass('recording');
+                stopButton.show();
                 recordSeconds = 0;
-                $recordStatus.text('00:00').addClass('active');
+                recordStatus.text('00:00').addClass('active');
                 recordTimer = setInterval(() => {
                     recordSeconds++;
                     const minutes = Math.floor(recordSeconds / 60).toString().padStart(2, '0');
                     const seconds = (recordSeconds % 60).toString().padStart(2, '0');
-                    $recordStatus.text(`${minutes}:${seconds}`);
+                    recordStatus.text(`${minutes}:${seconds}`);
                 }, 1000);
             })
             .catch(err => {
@@ -239,94 +195,87 @@ $(document).ready(function() {
     function stopRecording() {
         if (mediaRecorder && mediaRecorder.state !== 'inactive') {
             mediaRecorder.stop();
-            $recordButton.removeClass('recording');
-            $stopButton.hide();
-            $recordStatus.text('').removeClass('active');
+            recordButton.removeClass('recording');
+            stopButton.hide();
+            recordStatus.text('').removeClass('active');
             clearInterval(recordTimer);
         }
     }
 
-    $sendVoiceButton.click(() => {
+    sendVoiceButton.click(function() {
         const audioBlob = new Blob(audioChunks, { type: recordingMimeType });
-        const key = `voice-user-${Date.now()}`,
-              tempLi = createMessage('voice', { filename: 'voice.ogg' }, true);
-        $messagesList.append(tempLi).scrollTop($messagesList[0].scrollHeight);
-        pendingUploads.set(key, tempLi);
-
-        const formData = new FormData();
-        formData.append('type', 'voice');
-        formData.append('file', audioBlob, 'voice.ogg');
-        formData.append('mimeType', recordingMimeType);
-
-        $.ajax({
-            url: `${serverHttpUrl}/upload`,
-            method: 'POST',
-            data: formData,
-            processData: false,
-            contentType: false,
-            xhrFields: { withCredentials: true },
-            success: () => console.log('Голосовое сообщение загружено'),
-            error: (err) => console.error('Ошибка загрузки голосового сообщения:', err)
-        });
-
-        $previewContainer.hide();
-        URL.revokeObjectURL($previewAudio.attr('src'));
+        const reader = new FileReader();
+        reader.onload = () => {
+            const base64 = reader.result.split(',')[1];
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({ type: 'voice', voice: base64, mimeType: recordingMimeType }));
+            }
+            previewContainer.hide();
+            URL.revokeObjectURL(previewAudio.attr('src'));
+        };
+        reader.readAsDataURL(audioBlob);
     });
 
-    $deleteVoiceButton.click(() => {
-        $previewContainer.hide();
-        URL.revokeObjectURL($previewAudio.attr('src'));
+    deleteVoiceButton.click(function() {
+        previewContainer.hide();
+        URL.revokeObjectURL(previewAudio.attr('src'));
         audioChunks = [];
     });
 
-    $mediaButton.click(() => $mediaInput.click());
+    mediaButton.click(function() { $('#media-input').click(); });
 
-    $mediaInput.change(function() {
+    $('#media-input').change(function() {
         const file = this.files[0];
-        if (!file) return;
-        const type = file.type.startsWith('image/') ? 'photo' : file.type.startsWith('video/') ? 'video' : 'file',
-              key = `${type}-${file.name}`,
-              tempLi = createMessage(type, { filename: file.name }, true);
-        $messagesList.append(tempLi).scrollTop($messagesList[0].scrollHeight);
-        pendingUploads.set(key, tempLi);
-
-        const formData = new FormData();
-        formData.append('type', type);
-        formData.append('file', file);
-        formData.append('filename', file.name);
-
-        $.ajax({
-            url: `${serverHttpUrl}/upload`,
-            method: 'POST',
-            data: formData,
-            processData: false,
-            contentType: false,
-            xhrFields: { withCredentials: true },
-            success: () => console.log(`Медиафайл загружен: ${file.name}`),
-            error: (err) => console.error('Ошибка загрузки медиафайла:', err)
-        });
-
-        this.value = '';
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = () => {
+                const base64 = reader.result.split(',')[1];
+                let type = 'file';
+                if (file.type.startsWith('image/')) type = 'photo';
+                else if (file.type.startsWith('video/')) type = 'video';
+                if (socket && socket.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify({ type, [type]: base64, filename: file.name }));
+                }
+                this.value = '';
+            };
+            reader.readAsDataURL(file);
+        }
     });
 
-    $messageForm.submit((event) => {
+    $('#message-form').submit(function(event) {
         event.preventDefault();
-        const messageText = $messageInput.val().trim();
+        const messageInput = $('#message-input');
+        const messageText = messageInput.val().trim();
         if (messageText && socket && socket.readyState === WebSocket.OPEN) {
-            console.log('Отправка текстового сообщения:', messageText);
             socket.send(JSON.stringify({ type: 'message', message: messageText }));
-            $messageInput.val('');
+            messageInput.val('');
         }
     });
 
     $.ajax({
-        url: `${serverHttpUrl}/get-uid`,
+        url: `${serverUrl.replace('ws', 'http').replace('wss', 'https')}/get-uid`,
         method: 'GET',
         xhrFields: { withCredentials: true },
-        success: (response) => {
-            $uidInput.val(response.uid);
+        success: function(response) {
+            $('#uid-input').val(response.uid);
             console.log('UID получен:', response.uid);
-            if (!$chatContainer.hasClass('hidden')) connectWebSocket();
+            if (chatContainer.is(':visible')) connectWebSocket();
         }
     });
+});
+
+const recordButton = document.getElementById("record-button");
+const stopButton = document.getElementById("stop-button");
+const chatContainer = document.getElementById("chat-container");
+
+recordButton.addEventListener("click", () => {
+    chatContainer.classList.add("recording"); // Скрываем текстовое поле
+    stopButton.style.display = "block";
+    recordButton.style.display = "none";
+});
+
+stopButton.addEventListener("click", () => {
+    chatContainer.classList.remove("recording"); // Показываем обратно
+    stopButton.style.display = "none";
+    recordButton.style.display = "block";
 });
