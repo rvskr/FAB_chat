@@ -3,55 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Telegram Бот</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <title>Диалог с телеграм-ботом</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-    <div class="container">
-        <h1>Telegram Бот</h1>
+    <div class="chat-wrapper">
         <div class="chat-container" id="chat-container">
             <div class="chat-header">
-                <div class="chat-title">Поддержка Telegram</div>
+                <div class="chat-title">Чат поддержки</div>
                 <div class="chat-controls">
                     <button class="control-button" id="fullscreen-button"><i class="fas fa-expand"></i></button>
                     <button class="control-button" id="close-chat-button"><i class="fas fa-times"></i></button>
                 </div>
             </div>
-            <ul id="messages-list">
-                <li class="chat-message bot-message">
-                    Добро пожаловать! Чем я могу вам помочь?
-                    <div class="message-time">12:05</div>
-                </li>
-                <li class="chat-message user-message">
-                    Здравствуйте! У меня вопрос по работе с ботом.
-                    <div class="message-time">12:06 <span class="message-status message-read"></span></div>
-                </li>
-                <li class="chat-message bot-message">
-                    Конечно, я готов помочь! О каком боте идет речь?
-                    <div class="voice-message">
-                        <i class="fas fa-play voice-message-icon"></i>
-                        <div class="voice-message-waveform"></div>
-                        <div class="voice-message-duration">0:22</div>
-                    </div>
-                    <div class="message-time">12:07</div>
-                </li>
-            </ul>
+            <ul id="messages-list"></ul>
             <div id="preview-container" class="preview-container" style="display: none;">
                 <audio id="preview-audio" controls></audio>
-                <button id="send-voice-button" title="Отправить голосовое"><i class="fas fa-paper-plane"></i> Отправить</button>
-                <button id="delete-voice-button" title="Удалить запись"><i class="fas fa-trash"></i> Удалить</button>
+                <button id="send-voice-button" title="Отправить голосовое"><i class="fas fa-paper-plane"></i></button>
+                <button id="delete-voice-button" title="Удалить запись"><i class="fas fa-trash"></i></button>
             </div>
             <form id="message-form">
                 <input type="hidden" id="uid-input" name="uid">
                 <div class="input-container">
-                    <input type="text" id="message-input" name="message" placeholder="Сообщение...">
+                    <input type="text" id="message-input" name="message" placeholder="Введите сообщение...">
                     <button type="button" id="record-button" title="Записать голосовое"><i class="fas fa-microphone"></i></button>
                     <button type="button" id="stop-button" title="Остановить запись" style="display: none;"><i class="fas fa-stop"></i></button>
-                    <span id="record-status" class="record-status">Запись...</span>
-                    <input type="file" id="media-input" style="display: none;" accept="image/*,video/*">
+                    <span id="record-status" class="record-status"></span>
+                    <input type="file" id="media-input" style="display: none;" accept="*/*">
                     <button type="button" id="media-button" title="Отправить медиа"><i class="fas fa-paperclip"></i></button>
-                    <button type="submit" id="send-button"><i class="fas fa-paper-plane"></i><span>Отправить</span></button>
+                    <button type="submit" id="send-button"><i class="fas fa-paper-plane"></i></button>
                 </div>
             </form>
         </div>

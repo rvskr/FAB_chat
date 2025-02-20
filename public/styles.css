@@ -6,20 +6,11 @@ body {
     color: #e4e6eb;
 }
 
-
-
-.container {
-    max-width: 1200px;
-    margin: 0 auto;
-    position: relative;
-    padding: 20px;
-}
-
-h1 {
-    text-align: center;
-    color: #e4e6eb;
-    font-weight: 500;
-    margin-bottom: 30px;
+.chat-wrapper {
+    position: fixed;
+    bottom: 1%;
+    right: 1%;
+    z-index: 1000;
 }
 
 .chat-container {
@@ -32,29 +23,23 @@ h1 {
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    position: fixed;
-    top: 55%;
-    right: 1%;
-    transform: translateY(-50%);
     border: 1px solid #2c3e50;
+    transition: all 0.3s ease;
+}
+
+.chat-container.hidden {
+    display: none;
 }
 
 .chat-container.fullscreen {
     position: fixed;
     top: 0;
-    right: 0;
+    left: 0;
     width: 100vw;
     height: 100vh;
     max-width: none;
-    z-index: 1000;
     border-radius: 0;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    position: fixed;
-    top: 50%;
-    transform: translateY(-50%);
-    border: 1px solid #2c3e50;
+    border: none;
 }
 
 .chat-header {
@@ -109,12 +94,15 @@ h1 {
 
 .chat-message {
     margin: 8px 0;
-    padding: 10px 14px;
+    padding: 0;
     border-radius: 8px;
     max-width: 80%;
+    display: flex;
+    flex-direction: column;
+    word-wrap: break-word;
+    white-space: pre-wrap;
     line-height: 1.4;
-    position: relative;
-    animation: fadeIn 0.3s;
+    animation: fadeIn 0.3s ease-in-out;
 }
 
 @keyframes fadeIn {
@@ -123,14 +111,19 @@ h1 {
 }
 
 .user-message {
-    background: #3b7eeb;
-    color: white;
     margin-left: auto;
-    text-align: left;
-    border-bottom-right-radius: 2px;
 }
 
-.user-message::after {
+.user-message .message-content {
+    background: #3b7eeb;
+    color: white;
+    padding: 10px 14px;
+    border-radius: 8px;
+    border-bottom-right-radius: 2px;
+    position: relative;
+}
+
+.user-message .message-content::after {
     content: "";
     position: absolute;
     bottom: 0;
@@ -142,13 +135,19 @@ h1 {
 }
 
 .bot-message {
-    background: #182533;
-    color: #e4e6eb;
     margin-right: auto;
-    border-bottom-left-radius: 2px;
 }
 
-.bot-message::after {
+.bot-message .message-content {
+    background: #182533;
+    color: #e4e6eb;
+    padding: 10px 14px;
+    border-radius: 8px;
+    border-bottom-left-radius: 2px;
+    position: relative;
+}
+
+.bot-message .message-content::after {
     content: "";
     position: absolute;
     bottom: 0;
@@ -159,11 +158,19 @@ h1 {
     border-top: 8px solid transparent;
 }
 
-.message-time {
-    font-size: 11px;
-    color: rgba(255, 255, 255, 0.7);
-    margin-top: 4px;
-    text-align: right;
+.message-header {
+    font-size: 12px;
+    color: #8a9aa9;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* Исправление стиля для файлов */
+.chat-message.file .message-content {
+    background: none;
+    padding: 0;
 }
 
 form {
@@ -196,39 +203,9 @@ form {
 }
 
 button {
-    background: #3b7eeb;
-    color: white;
-    border: none;
-    padding: 10px 14px;
-    border-radius: 20px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    transition: background 0.2s;
-    font-size: 14px;
-}
-
-button:hover {
-    background: #2e65c1;
-}
-
-#send-button {
-    padding: 8px;
-    font-size: 18px;
-    border-radius: 50%;
-    width: 38px;
-    height: 38px;
-    justify-content: center;
-}
-
-#send-button span {
-    display: none;
-}
-
-#record-button, #stop-button, #media-button {
-    background: transparent;
+    background: none;
     color: #8a9aa9;
+    border: none;
     padding: 7px;
     font-size: 18px;
     width: 32px;
@@ -237,12 +214,26 @@ button:hover {
     justify-content: center;
     align-items: center;
     border-radius: 50%;
-    transition: background-color 0.2s;
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s;
 }
 
-#record-button:hover, #stop-button:hover, #media-button:hover {
+button:hover {
     background-color: #2e4156;
     color: #e4e6eb;
+}
+
+#send-button {
+    background: #3b7eeb;
+    color: white;
+    padding: 8px;
+    border-radius: 50%;
+    width: 38px;
+    height: 38px;
+}
+
+#send-button:hover {
+    background: #2e65c1;
 }
 
 #record-button.recording, #stop-button {
@@ -257,13 +248,6 @@ button:hover {
 
 .record-status.active {
     display: inline;
-    animation: pulse 1.5s infinite;
-}
-
-@keyframes pulse {
-    0% { opacity: 1; }
-    50% { opacity: 0.5; }
-    100% { opacity: 1; }
 }
 
 .preview-container {
@@ -275,57 +259,15 @@ button:hover {
     gap: 10px;
 }
 
-/* Improved audio player styling */
 .preview-container audio {
     flex: 1;
     border-radius: 18px;
     background: transparent;
 }
 
-/* Custom audio player styling */
-audio {
-    -webkit-appearance: none;
-    appearance: none;
-    background: #253545;
-    border-radius: 20px;
-    height: 40px;
-    padding: 5px;
-}
-
-audio::-webkit-media-controls-panel {
-    background-color: #253545;
-    border-radius: 20px;
-}
-
-audio::-webkit-media-controls-current-time-display,
-audio::-webkit-media-controls-time-remaining-display {
-    color: #e4e6eb;
-    font-size: 12px;
-}
-
-audio::-webkit-media-controls-timeline {
-    background: #1a2838;
-    border-radius: 20px;
-    margin: 0 10px;
-    height: 4px;
-}
-
-audio::-webkit-media-controls-play-button {
-    background-color: #3b7eeb;
-    border-radius: 50%;
-    width: 30px;
-    height: 30px;
-}
-
-audio::-webkit-media-controls-volume-slider {
-    background: #1a2838;
-    border-radius: 20px;
-    padding: 0 5px;
-}
-
 #send-voice-button {
     background: #52a861;
-    padding: 8px 12px;
+    color: white;
 }
 
 #send-voice-button:hover {
@@ -334,7 +276,7 @@ audio::-webkit-media-controls-volume-slider {
 
 #delete-voice-button {
     background: #e64c65;
-    padding: 8px 12px;
+    color: white;
 }
 
 #delete-voice-button:hover {
@@ -370,38 +312,46 @@ audio::-webkit-media-controls-volume-slider {
     margin-top: 8px;
 }
 
-/* Voice message styling */
-.voice-message {
+.chat-message .loading-spinner {
+    display: inline-block;
+    margin-left: 5px;
+    color: #3b7eeb;
+}
+
+.chat-message .download-link {
+    margin-left: 5px;
+    color: #3b7eeb;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.chat-message .download-link:hover {
+    text-decoration: underline;
+}
+
+.chat-message .download-link.downloading {
+    color: #ff5c5c;
+}
+
+.profile-placeholder {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
     display: flex;
     align-items: center;
-    gap: 10px;
-    background: #253545;
-    border-radius: 15px;
-    padding: 8px 12px;
-    margin-top: 8px;
+    justify-content: center;
+    font-size: 16px;
+    color: white;
 }
 
-.voice-message-icon {
-    color: #3b7eeb;
-    font-size: 20px;
-    animation: pulse 1.5s infinite;
+.profile-placeholder.user {
+    background-color: #3b7eeb;
 }
 
-.voice-message-waveform {
-    flex: 1;
-    height: 24px;
-    background-image: url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDIwMCAyNCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICAgIDxwYXRoIGQ9Ik0xIDEyIEMxIDEyLCAxMCA0LCAyMCAxMiBDMzAgMjAsIDQwIDQsIDUwIDEyIEM2MCAyMCwgNzAgNCwgODAgMTIgQzkwIDIwLCAxMDAgNCwgMTEwIDEyIEMxMjAgMjAsIDEzMCA0LCAxNDAgMTIgQzE1MCAyMCwgMTYwIDQsIDE3MCAxMiBDMTgwIDIwLCAxOTAgNCwgMTk5IDEyIiBzdHJva2U9IiMzYjdlZWIiIGZpbGw9Im5vbmUiIHN0cm9rZS13aWR0aD0iMiIgIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgo8L3N2Zz4=");
-    background-repeat: no-repeat;
-    background-position: center;
-    background-size: cover;
+.profile-placeholder.admin {
+    background-color: #e74c3c;
 }
 
-.voice-message-duration {
-    color: #8a9aa9;
-    font-size: 12px;
-}
-
-/* Scrollbar styling */
 #messages-list::-webkit-scrollbar {
     width: 6px;
 }
@@ -417,26 +367,4 @@ audio::-webkit-media-controls-volume-slider {
 
 #messages-list::-webkit-scrollbar-thumb:hover {
     background: #3b4a5a;
-}
-
-/* Message status indicators */
-.message-status {
-    display: inline-block;
-    margin-left: 5px;
-    font-size: 14px;
-}
-
-.message-sent .message-status::after {
-    content: "✓";
-    color: rgba(255, 255, 255, 0.6);
-}
-
-.message-delivered .message-status::after {
-    content: "✓✓";
-    color: rgba(255, 255, 255, 0.6);
-}
-
-.message-read .message-status::after {
-    content: "✓✓";
-    color: #5cb8ff;
 }
