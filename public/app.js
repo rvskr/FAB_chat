@@ -26,7 +26,7 @@ $(document).ready(function() {
 
     const serverUrl = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost'
         ? 'ws://127.0.0.1:3000'
-        : 'wss://wigtlfdkpc.loclx.io';
+        : 'wss://fab-chat.onrender.com';
     const httpServerUrl = serverUrl.replace('ws', 'http').replace('wss', 'https');
 
     elements.chatContainer.hide();
