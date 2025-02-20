@@ -1,5 +1,15 @@
 require('dotenv').config();
-const { TelegramBot, express, http, bodyParser, cookieParser, path, cors, session, WebSocket } = {
+const {
+  TelegramBot,
+  express,
+  http,
+  bodyParser,
+  cookieParser,
+  path,
+  cors,
+  session,
+  WebSocket
+} = {
   TelegramBot: require('node-telegram-bot-api'),
   express: require('express'),
   http: require('http'),
@@ -23,9 +33,10 @@ let lastRespondedUid = null;
 
 const telegramChatIds = process.env.TELEGRAM_CHAT_ID.split(',').map(id => id.trim());
 
+// Настройка CORS
 app.use(cors({
-  origin: process.env.CLIENT_URL || '*',
-  credentials: true
+  origin: process.env.CLIENT_URL || 'http://localhost:3000', // Укажите точный URL фронтенда
+  credentials: true // Разрешить передачу куки
 }));
 
 app.use(cookieParser());
@@ -33,15 +44,16 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Настройка сессий
 const sessionParser = session({
   secret: process.env.SESSION_SECRET || 'your-secret-key',
   resave: false,
   saveUninitialized: false,
   cookie: {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: 3600000
+    httpOnly: false,
+    secure: process.env.NODE_ENV === 'production', // Secure только в продакшене
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // none для кросс-домена в продакшене
+    maxAge: 3600000 // 1 час
   }
 });
 
@@ -91,6 +103,7 @@ const isUserBanned = (uid) => {
   return true;
 };
 
+// Telegram команды
 bot.onText(/\/ban/, (msg, match) => {
   const { chat, reply_to_message: reply } = msg;
   if (!reply || !reply.text.startsWith('Пользователь')) return bot.sendMessage(chat.id, 'Ответьте на сообщение пользователя.');
@@ -144,10 +157,14 @@ bot.on('message', (msg) => {
   }
 });
 
+// WebSocket соединение
 wss.on('connection', (ws, req) => {
   sessionParser(req, {}, () => {
     const uid = req.session.uid || generateShortUid();
-    if (!req.session.uid) req.session.uid = uid;
+    if (!req.session.uid) {
+      req.session.uid = uid;
+      req.session.save(); // Сохраняем сессию явно
+    }
 
     activeConnections.set(uid, ws);
 
@@ -179,10 +196,14 @@ wss.on('connection', (ws, req) => {
   });
 });
 
+// REST API
 app.post('/send-message', (req, res) => {
   const { message } = req.body;
   const uid = req.session.uid || generateShortUid();
-  if (!req.session.uid) req.session.uid = uid;
+  if (!req.session.uid) {
+    req.session.uid = uid;
+    req.session.save();
+  }
 
   if (!message) return res.status(400).send('Сообщение не может быть пустым');
   if (isUserBanned(uid)) return res.status(403).json({ error: 'Вы заблокированы.' });
@@ -202,13 +223,20 @@ app.get('/get-messages', (req, res) => {
 });
 
 app.get('/', (req, res) => {
-  if (!req.session.uid) req.session.uid = generateShortUid();
+  if (!req.session.uid) {
+    req.session.uid = generateShortUid();
+    req.session.save();
+  }
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 app.get('/get-uid', (req, res) => {
-  if (!req.session.uid) req.session.uid = generateShortUid();
-  res.json({ success: true });
+  if (!req.session.uid) {
+    req.session.uid = generateShortUid();
+    req.session.save();
+  }
+  console.log('UID:', req.session.uid); // Логирование для отладки
+  res.json({ success: true, uid: req.session.uid });
 });
 
 server.listen(port, () => {
